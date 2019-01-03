@@ -1,7 +1,9 @@
 import pandas as pd
 import pdb
 import numpy as np
+import numpy.random as rand
 
+N_samplings = 10
 
 #Import Astrometric Data
 pdb.set_trace()
@@ -18,7 +20,7 @@ astrometric_means = np.array([datab['ra'].values,
                         datab['radial_velocity'].values]).T
 Nstars = datab['ra'].values.shape[0]
 Nzeros = np.zeros(Nstars)
-astrometric_covariance = np.array([[datab['ra_error'].values**2,
+astrometric_covariances = np.array([[datab['ra_error'].values**2,
                                     datab['ra_dec_corr'].values * datab['ra_error'].values * datab['dec_error'].values,
                                     datab['ra_parallax_corr'].values * datab['ra_error'].values * datab['parallax_error'].values,
                                     datab['ra_pmra_corr'].values * datab['ra_error'].values * datab['pmra_error'].values,
@@ -35,13 +37,16 @@ astrometric_covariance = np.array([[datab['ra_error'].values**2,
                                     [Nzeros, Nzeros, Nzeros, Nzeros, datab['pmdec_error'].values**2,Nzeros],
                                     [Nzeros, Nzeros, Nzeros, Nzeros, Nzeros, datab['radial_velocity_error'].values**2]])
 
-astrometric_covariance = np.transpose(astrometric_covariance, (2,0,1)) #Rearrange
-astrometric_covariance = np.array([astrometric_covariance[ii] + astrometric_covariance[ii].T - \
-                                np.diagonal(astrometric_covariance[ii])*np.identity(6) \
-                                for ii in range(0,Nstars)]) #Symmetrize
+astrometric_covariances = np.transpose(astrometric_covariances, (2,0,1)) #Rearrange
+astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_covariances[ii].T - \
+                                np.diagonal(astrometric_covariances[ii])*np.identity(6) \
+                                for ii in range(Nstars)]) #Symmetrize
 
 #Sample from multivariate Gaussian
+#for jj in range(N_samplings):
+sample_jj = np.array([rand.multivariate_normal(astrometric_means[ii], astrometric_covariances[ii]) for ii in range(Nstars)])
 
 
+pdb.set_trace()
 
 print('Oscar the Grouch... Out')
