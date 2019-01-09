@@ -304,7 +304,7 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
                             solar_pomo_means, solar_pomo_covarianves,
                             epoch_T, seed):
 
-    rand.seed(int(seed * time.time()))
+    rand.seed(int(seed * int(str(time.time())[-4:])))
     stars_sample = np.array([rand.multivariate_normal(astrometric_means[ii],
                         astrometric_covariances[ii]) for ii in range(Nstars)])
 
