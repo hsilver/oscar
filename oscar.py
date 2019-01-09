@@ -381,30 +381,30 @@ astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_co
 #Calculate epoch_T matrix
 epoch_T = calc_epoch_T('J2000')
 
-#Linear Sample Transform Bin
-all_binned_data_vectors = []
-start = time.time()
-for jj in range(N_samplings):
-    binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
-                                solar_pomo_means, solar_pomo_covarianves,
-                                epoch_T,jj)
-    all_binned_data_vectors.append(binned_data_vector)
-all_binned_data_vectors = np.array(all_binned_data_vectors)
-print('Linear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
-
-# #Multiprocessor Pool
+# #Linear Sample Transform Bin
+# all_binned_data_vectors = []
 # start = time.time()
-# pool = mp.Pool(processes=2)
-# results = [pool.apply_async(sample_transform_bin,
-#                         args = (astrometric_means, astrometric_covariances,
+# for jj in range(N_samplings):
+#     binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
 #                                 solar_pomo_means, solar_pomo_covarianves,
-#                                 epoch_T, seed)) for seed in range(N_samplings)]
-# output = [p.get() for p in results]
-# all_binned_data_vectors = np.array(output)
-# end = time.time()
-# print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
-# print('Wall time per sample: ', (end-start)/N_samplings)
-# pdb.set_trace()
+#                                 epoch_T,jj)
+#     all_binned_data_vectors.append(binned_data_vector)
+# all_binned_data_vectors = np.array(all_binned_data_vectors)
+# print('Linear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
+
+#Multiprocessor Pool
+start = time.time()
+pool = mp.Pool(processes=2)
+results = [pool.apply_async(sample_transform_bin,
+                        args = (astrometric_means, astrometric_covariances,
+                                solar_pomo_means, solar_pomo_covarianves,
+                                epoch_T, seed)) for seed in range(N_samplings)]
+output = [p.get() for p in results]
+all_binned_data_vectors = np.array(output)
+end = time.time()
+print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
+print('Wall time per sample: ', (end-start)/N_samplings)
+pdb.set_trace()
 
 # #Multiprocessor via Process class
 # output = mp.Queue()
