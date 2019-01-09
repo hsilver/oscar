@@ -4,6 +4,7 @@ import numpy as np
 import numpy.random as rand
 import time
 import scipy.stats as stats
+import multiprocessing as mp
 
 
 def calc_epoch_T(epoch):
@@ -299,10 +300,32 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec,
             vbar_RZ_dat_grid, vbar_RZ_std_grid])
 
 
+def sample_transform_bin(astrometric_means, astrometric_covariances,
+                            solar_pomo_means, solar_pomo_covarianves,
+                            epoch_T, seed):
+
+    rand.seed(int(seed * time.time()))
+    stars_sample = np.array([rand.multivariate_normal(astrometric_means[ii],
+                        astrometric_covariances[ii]) for ii in range(Nstars)])
+
+    solar_pomo_sample = solar_pomo_means #UPDATE
+
+    Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec = astrometric_to_galactocentric(
+                    stars_sample[:,0], stars_sample[:,1], stars_sample[:,2],
+                    stars_sample[:,3], stars_sample[:,4], stars_sample[:,5],
+                    solar_pomo_sample[0], solar_pomo_sample[1], solar_pomo_sample[2],
+                    solar_pomo_sample[3], solar_pomo_sample[4], solar_pomo_sample[5],
+                    epoch_T)
+
+    binned_data_vector = binning(Rg_vec, phig_vec, Zg_vec,
+                                vRg_vec, vTg_vec, vZg_vec,
+                                phi_limit, R_edges, Z_edges).flatten()
+
+    return binned_data_vector
 
 
 # Set Constants and Parameters
-N_samplings = 25
+N_samplings = 10
 deg_to_rad = np.pi/180
 mas_to_rad = (np.pi/6.48E8)
 maspyr_to_radps = np.pi/(6.48E8 * 31557600)
@@ -310,6 +333,10 @@ maspyr_to_radps = np.pi/(6.48E8 * 31557600)
 phi_limit = [0,2*np.pi]
 R_edges = np.linspace(5000,10000,10)
 Z_edges = np.linspace(-2000,2000,9)
+
+#Solar Position and Motion model
+solar_pomo_means = np.array([8200.,0.,100., 14.,238.,5.])
+solar_pomo_covarianves = np.zeros([6,6])
 
 #Import Astrometric Data
 data_folder = '/Users/hsilver/Physics_Projects/Astrometric_Data/Gaia_DR2_subsamples/'
@@ -352,41 +379,55 @@ astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_co
                                 np.diagonal(astrometric_covariances[ii])*np.identity(6) \
                                 for ii in range(Nstars)]) #Symmetrize
 
-#Sample from multivariate Gaussian
-all_binned_data_vectors = []
-for jj in range(N_samplings):
+#Calculate epoch_T matrix
+epoch_T = calc_epoch_T('J2000')
 
-    start = time.time()
-    sample_jj = np.array([rand.multivariate_normal(astrometric_means[ii], astrometric_covariances[ii]) for ii in range(Nstars)])
-    print('Sampling takes ', time.time()-start, ' s')
+# #Linear Sample Transform Bin
+# all_binned_data_vectors = []
+# start = time.time()
+# for jj in range(N_samplings):
+#     binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
+#                                 solar_pomo_means, solar_pomo_covarianves,
+#                                 epoch_T,jj)
+#     all_binned_data_vectors.append(binned_data_vector)
+# all_binned_data_vectors = np.array(all_binned_data_vectors)
+# print('Linear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
 
-    solar_posvel = np.array([8200.,0.,100., 14.,238.,5.])
-    epoch_T = calc_epoch_T('J2000')
+#Multiprocessor Pool
+#pdb.set_trace()
+start = time.time()
+pool = mp.Pool(processes=2)
+results = [pool.apply_async(sample_transform_bin,
+                        args = (astrometric_means, astrometric_covariances,
+                                solar_pomo_means, solar_pomo_covarianves,
+                                epoch_T, seed)) for seed in range(N_samplings)]
+output = [p.get() for p in results]
+all_binned_data_vectors = np.array(output)
+print('Parallel Sampling, Transforming, Binning takes ', time.time()-start, ' s')
+pdb.set_trace()
 
-    start = time.time()
-    Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec = astrometric_to_galactocentric(
-                                sample_jj[:,0], sample_jj[:,1], sample_jj[:,2],
-                                sample_jj[:,3], sample_jj[:,4], sample_jj[:,5],
-                                solar_posvel[0], solar_posvel[1], solar_posvel[2],
-                                solar_posvel[3], solar_posvel[4], solar_posvel[5],
-                                epoch_T)
-    print('Transformation takes ', time.time()-start, ' s')
-
-    start = time.time()
-    binned_data_vector = binning(Rg_vec, phig_vec, Zg_vec,
-                                vRg_vec, vTg_vec, vZg_vec,
-                                phi_limit, R_edges, Z_edges).flatten()
-    print('Binning takes ', time.time()-start, ' s')
-    all_binned_data_vectors.append(binned_data_vector)
+# #Multiprocessor via Process class
+# output = mp.Queue()
+# processes = [mp.Process(target=sample_transform_bin,
+#                         args = (astrometric_means, astrometric_covariances,
+#                                 solar_pomo_means, solar_pomo_covarianves,
+#                                 epoch_T, seed)) for seed in range(N_samplings)]
+# # Run processes
+# for p in processes:
+#     p.start()
+# # Exit the completed processes
+# for p in processes:
+#     p.join()
+# # Get process results from the output queue
+# results = [output.get() for p in processes]
 
 
 #Calculate means and covariances
-all_binned_data_vectors = np.array(all_binned_data_vectors)
 data_mean = np.mean(all_binned_data_vectors, axis=0)
 data_cov  = np.cov(all_binned_data_vectors.T)
 data_corr = np.corrcoef(all_binned_data_vectors.T)
 
-#Gaussianity test using D’Agostino and Pearson’s tests 
+#Gaussianity test using D’Agostino and Pearson’s tests
 pdb.set_trace()
 gaussianity_statistic, gaussianity_pvalue = stats.normaltest(all_binned_data_vectors)
 
