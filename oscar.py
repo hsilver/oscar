@@ -289,23 +289,27 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec,
                                             bins=[phi_limits,
                                             R_edges, Z_edges])[0][0]
 
-    return counts_grid, \
-            vbar_R1_dat_grid, vbar_R1_std_grid,\
-            vbar_p1_dat_grid, vbar_p1_std_grid,\
-            vbar_Z1_dat_grid, vbar_Z1_std_grid,\
-            vbar_RR_dat_grid, vbar_RR_std_grid,\
-            vbar_pp_dat_grid, vbar_pp_std_grid,\
-            vbar_ZZ_dat_grid, vbar_ZZ_std_grid,\
-            vbar_RZ_dat_grid, vbar_RZ_std_grid
+    return np.array([counts_grid,
+            vbar_R1_dat_grid, vbar_R1_std_grid,
+            vbar_p1_dat_grid, vbar_p1_std_grid,
+            vbar_Z1_dat_grid, vbar_Z1_std_grid,
+            vbar_RR_dat_grid, vbar_RR_std_grid,
+            vbar_pp_dat_grid, vbar_pp_std_grid,
+            vbar_ZZ_dat_grid, vbar_ZZ_std_grid,
+            vbar_RZ_dat_grid, vbar_RZ_std_grid])
 
 
 
 
 # Set Constants and Parameters
-N_samplings = 10
+N_samplings = 25
 deg_to_rad = np.pi/180
 mas_to_rad = (np.pi/6.48E8)
 maspyr_to_radps = np.pi/(6.48E8 * 31557600)
+
+phi_limit = [0,2*np.pi]
+R_edges = np.linspace(5000,10000,10)
+Z_edges = np.linspace(-2000,2000,9)
 
 #Import Astrometric Data
 data_folder = '/Users/hsilver/Physics_Projects/Astrometric_Data/Gaia_DR2_subsamples/'
@@ -349,6 +353,7 @@ astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_co
                                 for ii in range(Nstars)]) #Symmetrize
 
 #Sample from multivariate Gaussian
+all_binned_data_vectors = []
 for jj in range(N_samplings):
 
     start = time.time()
@@ -367,29 +372,37 @@ for jj in range(N_samplings):
                                 epoch_T)
     print('Transformation takes ', time.time()-start, ' s')
 
-    phi_limit = [0,2*np.pi]
-    R_edges = np.linspace(5000,10000,10)
-    Z_edges = np.linspace(-2000,2000,9)
-
     start = time.time()
-    counts_grid, \
-    vbar_R1_dat_grid, vbar_R1_std_grid,\
-    vbar_p1_dat_grid, vbar_p1_std_grid,\
-    vbar_Z1_dat_grid, vbar_Z1_std_grid,\
-    vbar_RR_dat_grid, vbar_RR_std_grid,\
-    vbar_pp_dat_grid, vbar_pp_std_grid,\
-    vbar_ZZ_dat_grid, vbar_ZZ_std_grid,\
-    vbar_RZ_dat_grid, vbar_RZ_std_grid \
-        = binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec,
-                    phi_limit, R_edges, Z_edges)
+    binned_data_vector = binning(Rg_vec, phig_vec, Zg_vec,
+                                vRg_vec, vTg_vec, vZg_vec,
+                                phi_limit, R_edges, Z_edges).flatten()
     print('Binning takes ', time.time()-start, ' s')
+    all_binned_data_vectors.append(binned_data_vector)
 
 
+#Calculate means and covariances
+all_binned_data_vectors = np.array(all_binned_data_vectors)
+data_mean = np.mean(all_binned_data_vectors, axis=0)
+data_cov  = np.cov(all_binned_data_vectors.T)
+data_corr = np.corrcoef(all_binned_data_vectors.T)
 
-
+#Gaussianity test using D’Agostino and Pearson’s tests 
 pdb.set_trace()
+gaussianity_statistic, gaussianity_pvalue = stats.normaltest(all_binned_data_vectors)
+
+
+
 print('Oscar the Grouch... Out')
 
+
+# (counts_grid, \
+# vbar_R1_dat_grid, vbar_R1_std_grid,\
+# vbar_p1_dat_grid, vbar_p1_std_grid,\
+# vbar_Z1_dat_grid, vbar_Z1_std_grid,\
+# vbar_RR_dat_grid, vbar_RR_std_grid,\
+# vbar_pp_dat_grid, vbar_pp_std_grid,\
+# vbar_ZZ_dat_grid, vbar_ZZ_std_grid,\
+# vbar_RZ_dat_grid, vbar_RZ_std_grid) \
 
 # T= sc.dot(sc.array([[sc.cos(theta),sc.sin(theta),0.],[sc.sin(theta),-sc.cos(theta),0.],[0.,0.,1.]]),
 #             sc.dot(sc.array([[-sc.sin(dec_ngp),0.,sc.cos(dec_ngp)],[0.,1.,0.],[sc.cos(dec_ngp),0.,sc.sin(dec_ngp)]]),sc.array([[sc.cos(ra_ngp),sc.sin(ra_ngp),0.],[-sc.sin(ra_ngp),sc.cos(ra_ngp),0.],[0.,0.,1.]])))
