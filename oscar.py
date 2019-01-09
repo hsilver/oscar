@@ -197,7 +197,6 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec,
     vphig_vec, star_V_gccyl[1]
     vZg_vec, star_V_gccyl[2]
     """
-
     counts_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             Rg_vec, #dummy array for count
                                             statistic='count',
@@ -403,7 +402,9 @@ results = [pool.apply_async(sample_transform_bin,
                                 epoch_T, seed)) for seed in range(N_samplings)]
 output = [p.get() for p in results]
 all_binned_data_vectors = np.array(output)
-print('Parallel Sampling, Transforming, Binning takes ', time.time()-start, ' s')
+end = time.time()
+print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
+print('Wall time per sample: ', (end-start)/N_samplings)
 pdb.set_trace()
 
 # #Multiprocessor via Process class
