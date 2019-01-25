@@ -330,14 +330,27 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
 
 
 # Set Constants and Parameters
-N_samplings = 50
+N_samplings = 20
 deg_to_rad = np.pi/180
 mas_to_rad = (np.pi/6.48E8)
 maspyr_to_radps = np.pi/(6.48E8 * 31557600)
 
+#Set binning
 phi_limit = [-np.pi/8,np.pi/8]
 R_edges = np.linspace(5000,10000,10)
 Z_edges = np.linspace(-2000,2000,9)
+
+R_bin_centers = (R_edges[1:] + R_edges[:-1])/2
+Z_bin_centers = (Z_edges[1:] + Z_edges[:-1])/2
+R_data_coords_mesh, Z_data_coords_mesh = np.meshgrid(R_bin_centers, Z_bin_centers, indexing='ij')
+
+bin_vol_grid= np.zeros([len(R_edges) - 1, len(Z_edges)-1])
+for (aa,bb), dummy in np.ndenumerate(bin_vol_grid):
+    bin_vol_grid[aa,bb] = 0.5 * abs(phi_limit[1]-phi_limit[0])\
+                    * abs(R_edges[aa+1]**2 - R_edges[aa]**2)\
+                    * abs(Z_edges[bb+1] - Z_edges[bb])
+
+
 
 #Solar Position and Motion model
 solar_pomo_means = np.array([8200.,0.,100., 14.,238.,5.])
@@ -346,8 +359,8 @@ solar_pomo_covarianves = np.zeros([6,6])
 #Import Astrometric Data
 data_folder = '/Users/hsilver/Physics_Projects/Astrometric_Data/Gaia_DR2_subsamples/'
 #data_file = 'gaiaDR2_6D_test_sample_100k-result.csv'
-#data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5_Nstars_20000.csv'
-data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5Nstars_1333998.csv'
+data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5_Nstars_20000.csv'
+#data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5Nstars_1333998.csv'
 
 datab = pd.read_csv(data_folder + data_file) #astrometric_data_table
 
@@ -395,6 +408,7 @@ epoch_T = calc_epoch_T('J2000')
 all_binned_data_vectors = []
 start = time.time()
 for jj in range(N_samplings):
+    print('Sample ', jj, ' of ', N_samplings)
     binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
                                 cholesky_astrometric_covariances,
                                 solar_pomo_means, solar_pomo_covarianves,
@@ -440,16 +454,36 @@ print('Time per sample: ', (time.time()-start)/N_samplings, ' s\n')
 data_mean = np.mean(all_binned_data_vectors, axis=0)
 data_cov  = np.cov(all_binned_data_vectors.T)
 data_corr = np.corrcoef(all_binned_data_vectors.T)
+data_sigma2 = np.diag(data_cov)
 
 #Reformat into individual quantities
-# counts_grid,\
-# vbar_R1_dat_grid, vbar_R1_std_grid,\
-# vbar_p1_dat_grid, vbar_p1_std_grid,\
-# vbar_Z1_dat_grid, vbar_Z1_std_grid,\
-# vbar_RR_dat_grid, vbar_RR_std_grid,\
-# vbar_pp_dat_grid, vbar_pp_std_grid,\
-# vbar_ZZ_dat_grid, vbar_ZZ_std_grid,\
-# vbar_RZ_dat_grid, vbar_RZ_std_grid = data_mean.reshape()
+pdb.set_trace()
+grid_shape = (15, len(R_edges)-1, len(Z_edges)-1)
+
+counts_grid,\
+vbar_R1_dat_grid, vbar_R1_std_grid,\
+vbar_p1_dat_grid, vbar_p1_std_grid,\
+vbar_Z1_dat_grid, vbar_Z1_std_grid,\
+vbar_RR_dat_grid, vbar_RR_std_grid,\
+vbar_pp_dat_grid, vbar_pp_std_grid,\
+vbar_ZZ_dat_grid, vbar_ZZ_std_grid,\
+vbar_RZ_dat_grid, vbar_RZ_std_grid = data_mean.reshape(grid_shape)
+
+sigma_meas_counts_grid,\
+sigma_meas_vbar_R1_dat_grid, sigma_meas_vbar_R1_std_grid,\
+sigma_meas_vbar_p1_dat_grid, sigma_meas_vbar_p1_std_grid,\
+sigma_meas_vbar_Z1_dat_grid, sigma_meas_vbar_Z1_std_grid,\
+sigma_meas_vbar_RR_dat_grid, sigma_meas_vbar_RR_std_grid,\
+sigma_meas_vbar_pp_dat_grid, sigma_meas_vbar_pp_std_grid,\
+sigma_meas_vbar_ZZ_dat_grid, sigma_meas_vbar_ZZ_std_grid,\
+sigma_meas_vbar_RZ_dat_grid, sigma_meas_vbar_RZ_std_grid = np.sqrt(data_sigma2).reshape(grid_shape)
+
+# Calculate tracer density
+sigma_pois_counts_grid = np.sqrt(counts_grid)
+sigma_total_counts_grid = np.sqrt(sigma_pois_counts_grid**2 + sigma_meas_counts_grid**2)
+nu_dat_grid = counts_grid/bin_vol_grid
+nu_err_grid = sigma_total_counts_grid/bin_vol_grid
+
 
 #Gaussianity test using D’Agostino and Pearson’s tests
 pdb.set_trace()
