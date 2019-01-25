@@ -300,12 +300,18 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec,
 
 
 def sample_transform_bin(astrometric_means, astrometric_covariances,
+                            cholesky_astrometric_covariances,
                             solar_pomo_means, solar_pomo_covarianves,
                             epoch_T, seed):
+    #https://stackoverflow.com/questions/14920272/generate-a-data-set-consisting-of-n-100-2-dimensional-samples
 
     rand.seed(int(seed + int(time.time())%10000+1))
-    stars_sample = np.array([rand.multivariate_normal(astrometric_means[ii],
-                        astrometric_covariances[ii]) for ii in range(Nstars)])
+    # stars_sample = np.array([rand.multivariate_normal(astrometric_means[ii],
+    #                     astrometric_covariances[ii]) for ii in range(Nstars)])
+
+    #Cholesky Decomposition Test
+    uncorrelated_sample = np.random.standard_normal((Nstars,6))
+    stars_sample = np.array([np.dot(cholesky_astrometric_covariances[ii], uncorrelated_sample[ii]) + astrometric_means[ii] for ii in range(Nstars)])
 
     solar_pomo_sample = solar_pomo_means #UPDATE
 
@@ -324,7 +330,7 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
 
 
 # Set Constants and Parameters
-N_samplings = 10
+N_samplings = 50
 deg_to_rad = np.pi/180
 mas_to_rad = (np.pi/6.48E8)
 maspyr_to_radps = np.pi/(6.48E8 * 31557600)
@@ -339,7 +345,10 @@ solar_pomo_covarianves = np.zeros([6,6])
 
 #Import Astrometric Data
 data_folder = '/Users/hsilver/Physics_Projects/Astrometric_Data/Gaia_DR2_subsamples/'
-data_file = 'gaiaDR2_6D_test_sample_100k-result.csv'
+#data_file = 'gaiaDR2_6D_test_sample_100k-result.csv'
+#data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5_Nstars_20000.csv'
+data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5Nstars_1333998.csv'
+
 datab = pd.read_csv(data_folder + data_file) #astrometric_data_table
 
 #Construct Means and Covarriance Matrices
@@ -377,39 +386,44 @@ astrometric_covariances = np.transpose(astrometric_covariances, (2,0,1)) #Rearra
 astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_covariances[ii].T - \
                                 np.diagonal(astrometric_covariances[ii])*np.identity(6) \
                                 for ii in range(Nstars)]) #Symmetrize
+cholesky_astrometric_covariances = np.linalg.cholesky(astrometric_covariances)
 
 #Calculate epoch_T matrix
 epoch_T = calc_epoch_T('J2000')
 
-# #Linear Sample Transform Bin
-# all_binned_data_vectors = []
-# start = time.time()
-# for jj in range(N_samplings):
-#     binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
-#                                 solar_pomo_means, solar_pomo_covarianves,
-#                                 epoch_T,jj)
-#     all_binned_data_vectors.append(binned_data_vector)
-# all_binned_data_vectors = np.array(all_binned_data_vectors)
-# print('Linear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
-
-#Multiprocessor Pool
+#Linear Sample Transform Bin
+all_binned_data_vectors = []
 start = time.time()
-pool = mp.Pool(processes=2)
-results = [pool.apply_async(sample_transform_bin,
-                        args = (astrometric_means, astrometric_covariances,
+for jj in range(N_samplings):
+    binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
+                                cholesky_astrometric_covariances,
                                 solar_pomo_means, solar_pomo_covarianves,
-                                epoch_T, seed)) for seed in range(N_samplings)]
-output = [p.get() for p in results]
-all_binned_data_vectors = np.array(output)
-end = time.time()
-print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
-print('Wall time per sample: ', (end-start)/N_samplings)
-pdb.set_trace()
+                                epoch_T,jj)
+    all_binned_data_vectors.append(binned_data_vector)
+all_binned_data_vectors = np.array(all_binned_data_vectors)
+print('\nLinear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
+print('Time per sample: ', (time.time()-start)/N_samplings, ' s\n')
+
+# #Multiprocessor Pool
+# start = time.time()
+# pool = mp.Pool(processes=2)
+# results = [pool.apply_async(sample_transform_bin,
+#                         args = (astrometric_means, astrometric_covariances,
+#                                 cholesky_astrometric_covariances,
+#                                 solar_pomo_means, solar_pomo_covarianves,
+#                                 epoch_T, seed)) for seed in range(N_samplings)]
+# output = [p.get() for p in results]
+# all_binned_data_vectors = np.array(output)
+# end = time.time()
+# print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
+# print('Wall time per sample: ', (end-start)/N_samplings)
+# pdb.set_trace()
 
 # #Multiprocessor via Process class
 # output = mp.Queue()
 # processes = [mp.Process(target=sample_transform_bin,
 #                         args = (astrometric_means, astrometric_covariances,
+#                                 cholesky_astrometric_covariances,
 #                                 solar_pomo_means, solar_pomo_covarianves,
 #                                 epoch_T, seed)) for seed in range(N_samplings)]
 # # Run processes
@@ -426,6 +440,16 @@ pdb.set_trace()
 data_mean = np.mean(all_binned_data_vectors, axis=0)
 data_cov  = np.cov(all_binned_data_vectors.T)
 data_corr = np.corrcoef(all_binned_data_vectors.T)
+
+#Reformat into individual quantities
+# counts_grid,\
+# vbar_R1_dat_grid, vbar_R1_std_grid,\
+# vbar_p1_dat_grid, vbar_p1_std_grid,\
+# vbar_Z1_dat_grid, vbar_Z1_std_grid,\
+# vbar_RR_dat_grid, vbar_RR_std_grid,\
+# vbar_pp_dat_grid, vbar_pp_std_grid,\
+# vbar_ZZ_dat_grid, vbar_ZZ_std_grid,\
+# vbar_RZ_dat_grid, vbar_RZ_std_grid = data_mean.reshape()
 
 #Gaussianity test using D’Agostino and Pearson’s tests
 pdb.set_trace()
