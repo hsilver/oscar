@@ -450,23 +450,30 @@ print('Time per sample: ', (time.time()-start)/N_samplings, ' s\n')
 # results = [output.get() for p in processes]
 
 
-#Calculate means and covariances
+#Calculate means and covariances, Skewness, Kurtosis
 data_mean = np.mean(all_binned_data_vectors, axis=0)
 data_cov  = np.cov(all_binned_data_vectors.T)
 data_corr = np.corrcoef(all_binned_data_vectors.T)
 data_sigma2 = np.diag(data_cov)
+
+#Gaussianity test using D’Agostino and Pearson’s tests
+pdb.set_trace()
+skewness_stat, skewness_pval = stats.skewtest(all_binned_data_vectors)
+kurtosis_stat, kurtosis_pval = stats.kurtosistest(all_binned_data_vectors)
+gaussianity_stat, gaussianity_pval = stats.normaltest(all_binned_data_vectors)
+
+
+
+
 
 #Reformat into individual quantities
 pdb.set_trace()
 grid_shape = (15, len(R_edges)-1, len(Z_edges)-1)
 
 counts_grid,\
-vbar_R1_dat_grid, vbar_R1_std_grid,\
-vbar_p1_dat_grid, vbar_p1_std_grid,\
-vbar_Z1_dat_grid, vbar_Z1_std_grid,\
-vbar_RR_dat_grid, vbar_RR_std_grid,\
-vbar_pp_dat_grid, vbar_pp_std_grid,\
-vbar_ZZ_dat_grid, vbar_ZZ_std_grid,\
+vbar_R1_dat_grid, vbar_R1_std_grid, vbar_p1_dat_grid, vbar_p1_std_grid,\
+vbar_Z1_dat_grid, vbar_Z1_std_grid, vbar_RR_dat_grid, vbar_RR_std_grid,\
+vbar_pp_dat_grid, vbar_pp_std_grid, vbar_ZZ_dat_grid, vbar_ZZ_std_grid,\
 vbar_RZ_dat_grid, vbar_RZ_std_grid = data_mean.reshape(grid_shape)
 
 sigma_meas_counts_grid,\
@@ -478,6 +485,62 @@ sigma_meas_vbar_pp_dat_grid, sigma_meas_vbar_pp_std_grid,\
 sigma_meas_vbar_ZZ_dat_grid, sigma_meas_vbar_ZZ_std_grid,\
 sigma_meas_vbar_RZ_dat_grid, sigma_meas_vbar_RZ_std_grid = np.sqrt(data_sigma2).reshape(grid_shape)
 
+skewness_stat_counts_grid,\
+skewness_stat_vbar_R1_dat_grid, skewness_stat_vbar_R1_std_grid,\
+skewness_stat_vbar_p1_dat_grid, skewness_stat_vbar_p1_std_grid,\
+skewness_stat_vbar_Z1_dat_grid, skewness_stat_vbar_Z1_std_grid,\
+skewness_stat_vbar_RR_dat_grid, skewness_stat_vbar_RR_std_grid,\
+skewness_stat_vbar_pp_dat_grid, skewness_stat_vbar_pp_std_grid,\
+skewness_stat_vbar_ZZ_dat_grid, skewness_stat_vbar_ZZ_std_grid,\
+skewness_stat_vbar_RZ_dat_grid, skewness_stat_vbar_RZ_std_grid = skewness_stat.reshape(grid_shape)
+
+skewness_pval_counts_grid,\
+skewness_pval_vbar_R1_dat_grid, skewness_pval_vbar_R1_std_grid,\
+skewness_pval_vbar_p1_dat_grid, skewness_pval_vbar_p1_std_grid,\
+skewness_pval_vbar_Z1_dat_grid, skewness_pval_vbar_Z1_std_grid,\
+skewness_pval_vbar_RR_dat_grid, skewness_pval_vbar_RR_std_grid,\
+skewness_pval_vbar_pp_dat_grid, skewness_pval_vbar_pp_std_grid,\
+skewness_pval_vbar_ZZ_dat_grid, skewness_pval_vbar_ZZ_std_grid,\
+skewness_pval_vbar_RZ_dat_grid, skewness_pval_vbar_RZ_std_grid = skewness_pval.reshape(grid_shape)
+
+kurtosis_stat_counts_grid,\
+kurtosis_stat_vbar_R1_dat_grid, kurtosis_stat_vbar_R1_std_grid,\
+kurtosis_stat_vbar_p1_dat_grid, kurtosis_stat_vbar_p1_std_grid,\
+kurtosis_stat_vbar_Z1_dat_grid, kurtosis_stat_vbar_Z1_std_grid,\
+kurtosis_stat_vbar_RR_dat_grid, kurtosis_stat_vbar_RR_std_grid,\
+kurtosis_stat_vbar_pp_dat_grid, kurtosis_stat_vbar_pp_std_grid,\
+kurtosis_stat_vbar_ZZ_dat_grid, kurtosis_stat_vbar_ZZ_std_grid,\
+kurtosis_stat_vbar_RZ_dat_grid, kurtosis_stat_vbar_RZ_std_grid = kurtosis_stat.reshape(grid_shape)
+
+kurtosis_pval_counts_grid,\
+kurtosis_pval_vbar_R1_dat_grid, kurtosis_pval_vbar_R1_std_grid,\
+kurtosis_pval_vbar_p1_dat_grid, kurtosis_pval_vbar_p1_std_grid,\
+kurtosis_pval_vbar_Z1_dat_grid, kurtosis_pval_vbar_Z1_std_grid,\
+kurtosis_pval_vbar_RR_dat_grid, kurtosis_pval_vbar_RR_std_grid,\
+kurtosis_pval_vbar_pp_dat_grid, kurtosis_pval_vbar_pp_std_grid,\
+kurtosis_pval_vbar_ZZ_dat_grid, kurtosis_pval_vbar_ZZ_std_grid,\
+kurtosis_pval_vbar_RZ_dat_grid, kurtosis_pval_vbar_RZ_std_grid = kurtosis_pval.reshape(grid_shape)
+
+gaussianity_stat_counts_grid,\
+gaussianity_stat_vbar_R1_dat_grid, gaussianity_stat_vbar_R1_std_grid,\
+gaussianity_stat_vbar_p1_dat_grid, gaussianity_stat_vbar_p1_std_grid,\
+gaussianity_stat_vbar_Z1_dat_grid, gaussianity_stat_vbar_Z1_std_grid,\
+gaussianity_stat_vbar_RR_dat_grid, gaussianity_stat_vbar_RR_std_grid,\
+gaussianity_stat_vbar_pp_dat_grid, gaussianity_stat_vbar_pp_std_grid,\
+gaussianity_stat_vbar_ZZ_dat_grid, gaussianity_stat_vbar_ZZ_std_grid,\
+gaussianity_stat_vbar_RZ_dat_grid, gaussianity_stat_vbar_RZ_std_grid = gaussianity_stat.reshape(grid_shape)
+
+gaussianity_pval_counts_grid,\
+gaussianity_pval_vbar_R1_dat_grid, gaussianity_pval_vbar_R1_std_grid,\
+gaussianity_pval_vbar_p1_dat_grid, gaussianity_pval_vbar_p1_std_grid,\
+gaussianity_pval_vbar_Z1_dat_grid, gaussianity_pval_vbar_Z1_std_grid,\
+gaussianity_pval_vbar_RR_dat_grid, gaussianity_pval_vbar_RR_std_grid,\
+gaussianity_pval_vbar_pp_dat_grid, gaussianity_pval_vbar_pp_std_grid,\
+gaussianity_pval_vbar_ZZ_dat_grid, gaussianity_pval_vbar_ZZ_std_grid,\
+gaussianity_pval_vbar_RZ_dat_grid, gaussianity_pval_vbar_RZ_std_grid = gaussianity_pval.reshape(grid_shape)
+
+pdb.set_trace()
+
 # Calculate tracer density
 sigma_pois_counts_grid = np.sqrt(counts_grid)
 sigma_total_counts_grid = np.sqrt(sigma_pois_counts_grid**2 + sigma_meas_counts_grid**2)
@@ -485,9 +548,8 @@ nu_dat_grid = counts_grid/bin_vol_grid
 nu_err_grid = sigma_total_counts_grid/bin_vol_grid
 
 
-#Gaussianity test using D’Agostino and Pearson’s tests
-pdb.set_trace()
-gaussianity_statistic, gaussianity_pvalue = stats.normaltest(all_binned_data_vectors)
+
+
 
 
 
