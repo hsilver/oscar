@@ -5,6 +5,8 @@ import numpy.random as rand
 import time
 import scipy.stats as stats
 import multiprocessing as mp
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 
 
 def calc_epoch_T(epoch):
@@ -183,11 +185,7 @@ def astrometric_to_galactocentric(ra, dec, para, pm_ra, pm_dec, vr,
 
     return Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec
 
-def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec,
-            phi_limits, R_edges, Z_edges):
-
-    vphig_vec = vTg_vec/Rg_vec #rad/s
-
+def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_edges, Z_edges):
     """
     Rg_vec, star_data_gccyl[0]
     phig_vec, star_data_gccyl[1]
@@ -197,6 +195,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec,
     vphig_vec, star_V_gccyl[1]
     vZg_vec, star_V_gccyl[2]
     """
+    vphig_vec = vTg_vec/Rg_vec #rad/s
     counts_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             Rg_vec, #dummy array for count
                                             statistic='count',
@@ -328,17 +327,47 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
 
     return binned_data_vector
 
+def plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, data_grid,
+                    file_name,
+                    fig_height = 9, fig_width = 13, colormap = 'magma',
+                    lognorm = False, vmin=None, vmax=None,
+                    ylabel = 'Z [pc]', xlabel = 'R [pc]',
+                    cb_label = ' '):
+
+    fig, axes = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
+    fig.set_figheight(fig_height)
+    fig.set_figwidth(fig_width)
+    #plt.subplots_adjust(wspace=wspace_double_cbax)
+    ax = axes[0] #Plot
+    cbax = axes[1] #Colorbar
+    if lognorm:
+        im = ax.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh, data_grid,
+                        cmap = colormap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
+    else:
+        im = ax.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh, data_grid,
+                        cmap = colormap, vmin=vmin, vmax=vmax)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+    cb = fig.colorbar(im, cax=cbax)
+    cb.set_label(label=cb_label)
+    plt.savefig(file_name)
+
+
+
+##########################################################################
+
+
 
 # Set Constants and Parameters
-N_samplings = 20
+N_samplings = 100
 deg_to_rad = np.pi/180
 mas_to_rad = (np.pi/6.48E8)
 maspyr_to_radps = np.pi/(6.48E8 * 31557600)
 
 #Set binning
 phi_limit = [-np.pi/8,np.pi/8]
-R_edges = np.linspace(5000,10000,10)
-Z_edges = np.linspace(-2000,2000,9)
+R_edges = np.linspace(6000,10000,40)
+Z_edges = np.linspace(-2000,2000,40)
 
 R_bin_centers = (R_edges[1:] + R_edges[:-1])/2
 Z_bin_centers = (Z_edges[1:] + Z_edges[:-1])/2
@@ -354,127 +383,155 @@ for (aa,bb), dummy in np.ndenumerate(bin_vol_grid):
 
 #Solar Position and Motion model
 solar_pomo_means = np.array([8200.,0.,100., 14.,238.,5.])
+#solar_pomo_means = np.array([8200.,0.,100., 0.,0.,0.])
 solar_pomo_covarianves = np.zeros([6,6])
 
-#Import Astrometric Data
-data_folder = '/Users/hsilver/Physics_Projects/Astrometric_Data/Gaia_DR2_subsamples/'
-#data_file = 'gaiaDR2_6D_test_sample_100k-result.csv'
-data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5_Nstars_20000.csv'
-#data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5Nstars_1333998.csv'
 
-datab = pd.read_csv(data_folder + data_file) #astrometric_data_table
+#PROCESS DATA OR LOAD FROM CACHE
+file_name = 'cache_5_feb_full_sample_100_samples'
+codemode = 'LOAD' # 'LOAD'
 
-#Construct Means and Covarriance Matrices
-astrometric_means = np.array([datab['ra'].values * deg_to_rad, #rad
-                        datab['dec'].values * deg_to_rad, #rad
-                        datab['parallax'].values, #mas
-                        datab['pmra'].values * maspyr_to_radps, #rad/s
-                        datab['pmdec'].values * maspyr_to_radps, #rad/s
-                        datab['radial_velocity'].values]).T #km/s
-Nstars = datab['ra'].values.shape[0]
-Nzeros = np.zeros(Nstars)
+if codemode == 'LOAD':
+    data_mean_grids, sigma_meas_grids,\
+    skewness_stat_grids, skewness_pval_grids,\
+    kurtosis_stat_grids, kurtosis_pval_grids,\
+    gaussianity_stat_grids, gaussianity_pval_grids = np.load(file_name + '.npy')
 
-astrometric_covariances = np.array([[(datab['ra_error'].values*mas_to_rad)**2,
-                                    datab['ra_dec_corr'].values * datab['ra_error'].values * datab['dec_error'].values * mas_to_rad**2,
-                                    datab['ra_parallax_corr'].values * datab['ra_error'].values * datab['parallax_error'].values * mas_to_rad,
-                                    datab['ra_pmra_corr'].values * datab['ra_error'].values * datab['pmra_error'].values * mas_to_rad * maspyr_to_radps,
-                                    datab['ra_pmdec_corr'].values * datab['ra_error'].values * datab['pmdec_error'].values * mas_to_rad * maspyr_to_radps,
-                                    Nzeros],
-                                    [Nzeros, (datab['dec_error'].values*mas_to_rad)**2,
-                                    datab['dec_parallax_corr'].values * datab['dec_error'].values * datab['parallax_error'].values * mas_to_rad,
-                                    datab['dec_pmra_corr'].values * datab['dec_error'].values * datab['pmra_error'].values * mas_to_rad * maspyr_to_radps,
-                                    datab['dec_pmdec_corr'].values * datab['dec_error'].values * datab['pmdec_error'].values * mas_to_rad * maspyr_to_radps,
-                                    Nzeros],
-                                    [Nzeros, Nzeros, datab['parallax_error'].values**2,
-                                    datab['parallax_pmra_corr'].values * datab['parallax_error'].values * datab['pmra_error'].values * maspyr_to_radps,
-                                    datab['parallax_pmdec_corr'].values * datab['parallax_error'].values * datab['pmdec_error'].values * maspyr_to_radps,
-                                    Nzeros],
-                                    [Nzeros,Nzeros,Nzeros, (datab['pmra_error'].values * maspyr_to_radps)**2,
-                                    datab['pmra_pmdec_corr'].values * datab['pmra_error'].values * datab['pmdec_error'].values * maspyr_to_radps**2,
-                                    Nzeros],
-                                    [Nzeros, Nzeros, Nzeros, Nzeros, (datab['pmdec_error'].values * maspyr_to_radps)**2, Nzeros],
-                                    [Nzeros, Nzeros, Nzeros, Nzeros, Nzeros, datab['radial_velocity_error'].values**2]])
+elif codemode == 'SAVE':
+    #Import Astrometric Data
+    data_folder = '/Users/hsilver/Physics_Projects/Astrometric_Data/Gaia_DR2_subsamples/'
+    #data_file = 'gaiaDR2_6D_test_sample_100k-result.csv'
+    #data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5_Nstars_20000.csv'
+    data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5Nstars_1333998.csv'
 
-astrometric_covariances = np.transpose(astrometric_covariances, (2,0,1)) #Rearrange
-astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_covariances[ii].T - \
-                                np.diagonal(astrometric_covariances[ii])*np.identity(6) \
-                                for ii in range(Nstars)]) #Symmetrize
-cholesky_astrometric_covariances = np.linalg.cholesky(astrometric_covariances)
+    datab = pd.read_csv(data_folder + data_file) #astrometric_data_table
 
-#Calculate epoch_T matrix
-epoch_T = calc_epoch_T('J2000')
+    #Construct Means and Covarriance Matrices
+    astrometric_means = np.array([datab['ra'].values * deg_to_rad, #rad
+                            datab['dec'].values * deg_to_rad, #rad
+                            datab['parallax'].values, #mas
+                            datab['pmra'].values * maspyr_to_radps, #rad/s
+                            datab['pmdec'].values * maspyr_to_radps, #rad/s
+                            datab['radial_velocity'].values]).T #km/s
+    Nstars = datab['ra'].values.shape[0]
+    Nzeros = np.zeros(Nstars)
 
-#Linear Sample Transform Bin
-all_binned_data_vectors = []
-start = time.time()
-for jj in range(N_samplings):
-    print('Sample ', jj, ' of ', N_samplings)
-    binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
-                                cholesky_astrometric_covariances,
-                                solar_pomo_means, solar_pomo_covarianves,
-                                epoch_T,jj)
-    all_binned_data_vectors.append(binned_data_vector)
-all_binned_data_vectors = np.array(all_binned_data_vectors)
-print('\nLinear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
-print('Time per sample: ', (time.time()-start)/N_samplings, ' s\n')
+    astrometric_covariances = np.array([[(datab['ra_error'].values*mas_to_rad)**2,
+                                        datab['ra_dec_corr'].values * datab['ra_error'].values * datab['dec_error'].values * mas_to_rad**2,
+                                        datab['ra_parallax_corr'].values * datab['ra_error'].values * datab['parallax_error'].values * mas_to_rad,
+                                        datab['ra_pmra_corr'].values * datab['ra_error'].values * datab['pmra_error'].values * mas_to_rad * maspyr_to_radps,
+                                        datab['ra_pmdec_corr'].values * datab['ra_error'].values * datab['pmdec_error'].values * mas_to_rad * maspyr_to_radps,
+                                        Nzeros],
+                                        [Nzeros, (datab['dec_error'].values*mas_to_rad)**2,
+                                        datab['dec_parallax_corr'].values * datab['dec_error'].values * datab['parallax_error'].values * mas_to_rad,
+                                        datab['dec_pmra_corr'].values * datab['dec_error'].values * datab['pmra_error'].values * mas_to_rad * maspyr_to_radps,
+                                        datab['dec_pmdec_corr'].values * datab['dec_error'].values * datab['pmdec_error'].values * mas_to_rad * maspyr_to_radps,
+                                        Nzeros],
+                                        [Nzeros, Nzeros, datab['parallax_error'].values**2,
+                                        datab['parallax_pmra_corr'].values * datab['parallax_error'].values * datab['pmra_error'].values * maspyr_to_radps,
+                                        datab['parallax_pmdec_corr'].values * datab['parallax_error'].values * datab['pmdec_error'].values * maspyr_to_radps,
+                                        Nzeros],
+                                        [Nzeros,Nzeros,Nzeros, (datab['pmra_error'].values * maspyr_to_radps)**2,
+                                        datab['pmra_pmdec_corr'].values * datab['pmra_error'].values * datab['pmdec_error'].values * maspyr_to_radps**2,
+                                        Nzeros],
+                                        [Nzeros, Nzeros, Nzeros, Nzeros, (datab['pmdec_error'].values * maspyr_to_radps)**2, Nzeros],
+                                        [Nzeros, Nzeros, Nzeros, Nzeros, Nzeros, datab['radial_velocity_error'].values**2]])
 
-# #Multiprocessor Pool
-# start = time.time()
-# pool = mp.Pool(processes=2)
-# results = [pool.apply_async(sample_transform_bin,
-#                         args = (astrometric_means, astrometric_covariances,
-#                                 cholesky_astrometric_covariances,
-#                                 solar_pomo_means, solar_pomo_covarianves,
-#                                 epoch_T, seed)) for seed in range(N_samplings)]
-# output = [p.get() for p in results]
-# all_binned_data_vectors = np.array(output)
-# end = time.time()
-# print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
-# print('Wall time per sample: ', (end-start)/N_samplings)
-# pdb.set_trace()
+    astrometric_covariances = np.transpose(astrometric_covariances, (2,0,1)) #Rearrange
+    astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_covariances[ii].T - \
+                                    np.diagonal(astrometric_covariances[ii])*np.identity(6) \
+                                    for ii in range(Nstars)]) #Symmetrize
+    cholesky_astrometric_covariances = np.linalg.cholesky(astrometric_covariances)
 
-# #Multiprocessor via Process class
-# output = mp.Queue()
-# processes = [mp.Process(target=sample_transform_bin,
-#                         args = (astrometric_means, astrometric_covariances,
-#                                 cholesky_astrometric_covariances,
-#                                 solar_pomo_means, solar_pomo_covarianves,
-#                                 epoch_T, seed)) for seed in range(N_samplings)]
-# # Run processes
-# for p in processes:
-#     p.start()
-# # Exit the completed processes
-# for p in processes:
-#     p.join()
-# # Get process results from the output queue
-# results = [output.get() for p in processes]
+    #Calculate epoch_T matrix
+    epoch_T = calc_epoch_T('J2000')
 
+    #Linear Sample Transform Bin
+    all_binned_data_vectors = []
+    start = time.time()
+    for jj in range(N_samplings):
+        print('Sample ', jj, ' of ', N_samplings)
+        binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
+                                    cholesky_astrometric_covariances,
+                                    solar_pomo_means, solar_pomo_covarianves,
+                                    epoch_T,jj)
+        all_binned_data_vectors.append(binned_data_vector)
+    all_binned_data_vectors = np.array(all_binned_data_vectors)
+    print('\nLinear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
+    print('Time per sample: ', (time.time()-start)/N_samplings, ' s\n')
 
-#Calculate means and covariances, Skewness, Kurtosis
-data_mean = np.mean(all_binned_data_vectors, axis=0)
-data_cov  = np.cov(all_binned_data_vectors.T)
-data_corr = np.corrcoef(all_binned_data_vectors.T)
-data_sigma2 = np.diag(data_cov)
+    # #Multiprocessor Pool
+    # start = time.time()
+    # pool = mp.Pool(processes=2)
+    # results = [pool.apply_async(sample_transform_bin,
+    #                         args = (astrometric_means, astrometric_covariances,
+    #                                 cholesky_astrometric_covariances,
+    #                                 solar_pomo_means, solar_pomo_covarianves,
+    #                                 epoch_T, seed)) for seed in range(N_samplings)]
+    # output = [p.get() for p in results]
+    # all_binned_data_vectors = np.array(output)
+    # end = time.time()
+    # print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
+    # print('Wall time per sample: ', (end-start)/N_samplings)
+    # pdb.set_trace()
 
-#Gaussianity test using D’Agostino and Pearson’s tests
-pdb.set_trace()
-skewness_stat, skewness_pval = stats.skewtest(all_binned_data_vectors)
-kurtosis_stat, kurtosis_pval = stats.kurtosistest(all_binned_data_vectors)
-gaussianity_stat, gaussianity_pval = stats.normaltest(all_binned_data_vectors)
-
+    # #Multiprocessor via Process class
+    # output = mp.Queue()
+    # processes = [mp.Process(target=sample_transform_bin,
+    #                         args = (astrometric_means, astrometric_covariances,
+    #                                 cholesky_astrometric_covariances,
+    #                                 solar_pomo_means, solar_pomo_covarianves,
+    #                                 epoch_T, seed)) for seed in range(N_samplings)]
+    # # Run processes
+    # for p in processes:
+    #     p.start()
+    # # Exit the completed processes
+    # for p in processes:
+    #     p.join()
+    # # Get process results from the output queue
+    # results = [output.get() for p in processes]
 
 
+    #Calculate means and covariances, Skewness, Kurtosis
+    data_mean = np.mean(all_binned_data_vectors, axis=0)
+    data_cov  = np.cov(all_binned_data_vectors.T)
+    data_corr = np.corrcoef(all_binned_data_vectors.T)
+    data_sigma2 = np.diag(data_cov)
+
+    #Gaussianity test using D’Agostino and Pearson’s tests
+
+    skewness_stat, skewness_pval = stats.skewtest(all_binned_data_vectors)
+    kurtosis_stat, kurtosis_pval = stats.kurtosistest(all_binned_data_vectors)
+    gaussianity_stat, gaussianity_pval = stats.normaltest(all_binned_data_vectors)
+
+    #Reformat into individual quantities
+    grid_shape = (15, len(R_edges)-1, len(Z_edges)-1)
+
+    # Reshape
+    data_mean_grids = data_mean.reshape(grid_shape)
+    sigma_meas_grids = np.sqrt(data_sigma2).reshape(grid_shape)
+    skewness_stat_grids = skewness_stat.reshape(grid_shape)
+    skewness_pval_grids = skewness_pval.reshape(grid_shape)
+    kurtosis_stat_grids = kurtosis_stat.reshape(grid_shape)
+    kurtosis_pval_grids = kurtosis_pval.reshape(grid_shape)
+    gaussianity_stat_grids = gaussianity_stat.reshape(grid_shape)
+    gaussianity_pval_grids = gaussianity_pval.reshape(grid_shape)
+
+    np.save(file_name, np.array([data_mean_grids, sigma_meas_grids,
+                                    skewness_stat_grids, skewness_pval_grids,
+                                    kurtosis_stat_grids, kurtosis_pval_grids,
+                                    gaussianity_stat_grids, gaussianity_pval_grids]))
+else:
+    print('Wrong option')
 
 
-#Reformat into individual quantities
-pdb.set_trace()
-grid_shape = (15, len(R_edges)-1, len(Z_edges)-1)
 
+# PLOT RESULTS
 counts_grid,\
 vbar_R1_dat_grid, vbar_R1_std_grid, vbar_p1_dat_grid, vbar_p1_std_grid,\
 vbar_Z1_dat_grid, vbar_Z1_std_grid, vbar_RR_dat_grid, vbar_RR_std_grid,\
 vbar_pp_dat_grid, vbar_pp_std_grid, vbar_ZZ_dat_grid, vbar_ZZ_std_grid,\
-vbar_RZ_dat_grid, vbar_RZ_std_grid = data_mean.reshape(grid_shape)
+vbar_RZ_dat_grid, vbar_RZ_std_grid = data_mean_grids
 
 sigma_meas_counts_grid,\
 sigma_meas_vbar_R1_dat_grid, sigma_meas_vbar_R1_std_grid,\
@@ -483,7 +540,7 @@ sigma_meas_vbar_Z1_dat_grid, sigma_meas_vbar_Z1_std_grid,\
 sigma_meas_vbar_RR_dat_grid, sigma_meas_vbar_RR_std_grid,\
 sigma_meas_vbar_pp_dat_grid, sigma_meas_vbar_pp_std_grid,\
 sigma_meas_vbar_ZZ_dat_grid, sigma_meas_vbar_ZZ_std_grid,\
-sigma_meas_vbar_RZ_dat_grid, sigma_meas_vbar_RZ_std_grid = np.sqrt(data_sigma2).reshape(grid_shape)
+sigma_meas_vbar_RZ_dat_grid, sigma_meas_vbar_RZ_std_grid = sigma_meas_grids
 
 skewness_stat_counts_grid,\
 skewness_stat_vbar_R1_dat_grid, skewness_stat_vbar_R1_std_grid,\
@@ -492,7 +549,7 @@ skewness_stat_vbar_Z1_dat_grid, skewness_stat_vbar_Z1_std_grid,\
 skewness_stat_vbar_RR_dat_grid, skewness_stat_vbar_RR_std_grid,\
 skewness_stat_vbar_pp_dat_grid, skewness_stat_vbar_pp_std_grid,\
 skewness_stat_vbar_ZZ_dat_grid, skewness_stat_vbar_ZZ_std_grid,\
-skewness_stat_vbar_RZ_dat_grid, skewness_stat_vbar_RZ_std_grid = skewness_stat.reshape(grid_shape)
+skewness_stat_vbar_RZ_dat_grid, skewness_stat_vbar_RZ_std_grid = skewness_stat_grids
 
 skewness_pval_counts_grid,\
 skewness_pval_vbar_R1_dat_grid, skewness_pval_vbar_R1_std_grid,\
@@ -501,7 +558,7 @@ skewness_pval_vbar_Z1_dat_grid, skewness_pval_vbar_Z1_std_grid,\
 skewness_pval_vbar_RR_dat_grid, skewness_pval_vbar_RR_std_grid,\
 skewness_pval_vbar_pp_dat_grid, skewness_pval_vbar_pp_std_grid,\
 skewness_pval_vbar_ZZ_dat_grid, skewness_pval_vbar_ZZ_std_grid,\
-skewness_pval_vbar_RZ_dat_grid, skewness_pval_vbar_RZ_std_grid = skewness_pval.reshape(grid_shape)
+skewness_pval_vbar_RZ_dat_grid, skewness_pval_vbar_RZ_std_grid = skewness_pval_grids
 
 kurtosis_stat_counts_grid,\
 kurtosis_stat_vbar_R1_dat_grid, kurtosis_stat_vbar_R1_std_grid,\
@@ -510,7 +567,7 @@ kurtosis_stat_vbar_Z1_dat_grid, kurtosis_stat_vbar_Z1_std_grid,\
 kurtosis_stat_vbar_RR_dat_grid, kurtosis_stat_vbar_RR_std_grid,\
 kurtosis_stat_vbar_pp_dat_grid, kurtosis_stat_vbar_pp_std_grid,\
 kurtosis_stat_vbar_ZZ_dat_grid, kurtosis_stat_vbar_ZZ_std_grid,\
-kurtosis_stat_vbar_RZ_dat_grid, kurtosis_stat_vbar_RZ_std_grid = kurtosis_stat.reshape(grid_shape)
+kurtosis_stat_vbar_RZ_dat_grid, kurtosis_stat_vbar_RZ_std_grid = kurtosis_stat_grids
 
 kurtosis_pval_counts_grid,\
 kurtosis_pval_vbar_R1_dat_grid, kurtosis_pval_vbar_R1_std_grid,\
@@ -519,7 +576,7 @@ kurtosis_pval_vbar_Z1_dat_grid, kurtosis_pval_vbar_Z1_std_grid,\
 kurtosis_pval_vbar_RR_dat_grid, kurtosis_pval_vbar_RR_std_grid,\
 kurtosis_pval_vbar_pp_dat_grid, kurtosis_pval_vbar_pp_std_grid,\
 kurtosis_pval_vbar_ZZ_dat_grid, kurtosis_pval_vbar_ZZ_std_grid,\
-kurtosis_pval_vbar_RZ_dat_grid, kurtosis_pval_vbar_RZ_std_grid = kurtosis_pval.reshape(grid_shape)
+kurtosis_pval_vbar_RZ_dat_grid, kurtosis_pval_vbar_RZ_std_grid = kurtosis_pval_grids
 
 gaussianity_stat_counts_grid,\
 gaussianity_stat_vbar_R1_dat_grid, gaussianity_stat_vbar_R1_std_grid,\
@@ -528,7 +585,7 @@ gaussianity_stat_vbar_Z1_dat_grid, gaussianity_stat_vbar_Z1_std_grid,\
 gaussianity_stat_vbar_RR_dat_grid, gaussianity_stat_vbar_RR_std_grid,\
 gaussianity_stat_vbar_pp_dat_grid, gaussianity_stat_vbar_pp_std_grid,\
 gaussianity_stat_vbar_ZZ_dat_grid, gaussianity_stat_vbar_ZZ_std_grid,\
-gaussianity_stat_vbar_RZ_dat_grid, gaussianity_stat_vbar_RZ_std_grid = gaussianity_stat.reshape(grid_shape)
+gaussianity_stat_vbar_RZ_dat_grid, gaussianity_stat_vbar_RZ_std_grid = gaussianity_stat_grids
 
 gaussianity_pval_counts_grid,\
 gaussianity_pval_vbar_R1_dat_grid, gaussianity_pval_vbar_R1_std_grid,\
@@ -537,9 +594,9 @@ gaussianity_pval_vbar_Z1_dat_grid, gaussianity_pval_vbar_Z1_std_grid,\
 gaussianity_pval_vbar_RR_dat_grid, gaussianity_pval_vbar_RR_std_grid,\
 gaussianity_pval_vbar_pp_dat_grid, gaussianity_pval_vbar_pp_std_grid,\
 gaussianity_pval_vbar_ZZ_dat_grid, gaussianity_pval_vbar_ZZ_std_grid,\
-gaussianity_pval_vbar_RZ_dat_grid, gaussianity_pval_vbar_RZ_std_grid = gaussianity_pval.reshape(grid_shape)
+gaussianity_pval_vbar_RZ_dat_grid, gaussianity_pval_vbar_RZ_std_grid = gaussianity_pval_grids
 
-pdb.set_trace()
+
 
 # Calculate tracer density
 sigma_pois_counts_grid = np.sqrt(counts_grid)
@@ -547,6 +604,113 @@ sigma_total_counts_grid = np.sqrt(sigma_pois_counts_grid**2 + sigma_meas_counts_
 nu_dat_grid = counts_grid/bin_vol_grid
 nu_err_grid = sigma_total_counts_grid/bin_vol_grid
 
+# TRACER DENSITY
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, nu_dat_grid,
+                'nu_data.pdf', colormap = 'magma',
+                lognorm = False, cb_label='Tracer density stars [stars pc$^{-3}$]')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, gaussianity_pval_counts_grid,
+                'nu_gauss_pval.pdf', colormap = 'magma',
+                lognorm = True, vmin=1e-2, vmax=1.,
+                cb_label='Tracer density gaussianity p-value')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, skewness_stat_counts_grid,
+                'nu_skew_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = 'Tracer density Skewness z-score')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_counts_grid,
+                'nu_kurt_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = 'Tracer density kurtosis z-score')
+
+#Vertical Velocity
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, vbar_Z1_dat_grid,
+                'vbar_Z1_data.pdf', colormap = 'seismic',
+                lognorm = False, vmin=-30., vmax=30.,
+                cb_label='Vertical velocity $\overline{v_Z}$ [km s$^{-1}$]')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, gaussianity_pval_vbar_Z1_dat_grid,
+                'vbar_Z1_gauss_pval.pdf', colormap = 'magma',
+                lognorm = True, vmin=1e-2, vmax=1.,
+                cb_label='$\overline{v_Z}$  gaussianity p-value')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, skewness_stat_vbar_Z1_dat_grid,
+                'vbar_Z1_skew_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_Z}$  Skewness z-score')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_vbar_Z1_dat_grid,
+                'vbar_Z1_kurt_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_Z}$  kurtosis z-score')
+
+#Radial Velocity
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, vbar_R1_dat_grid,
+                'vbar_R1_data.pdf', colormap = 'magma',
+                lognorm = False, vmin=0., vmax=60.,
+                cb_label='Radial velocity $\overline{v_R}$ [km s$^{-1}$]')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, gaussianity_pval_vbar_R1_dat_grid,
+                'vbar_R1_gauss_pval.pdf', colormap = 'magma',
+                lognorm = True, vmin=1e-2, vmax=1.,
+                cb_label='$\overline{v_R}$  gaussianity p-value')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, skewness_stat_vbar_R1_dat_grid,
+                'vbar_R1_skew_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_R}$  Skewness z-score')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_vbar_R1_dat_grid,
+                'vbar_R1_kurt_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_R}$  kurtosis z-score')
+
+
+
+
+
+
+
+# fig_nu_dat, axes_nu_dat = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
+# fig_nu_dat.set_figheight(9)
+# fig_nu_dat.set_figwidth(13)
+# #plt.subplots_adjust(wspace=wspace_double_cbax)
+# ax_nu_dat = axes_nu_dat[0] #Plot
+# cbax_nu_dat = axes_nu_dat[1] #Colorbar
+# im_nu_dat = ax_nu_dat.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh,
+#                                     nu_dat_grid, cmap='magma')
+# cb_nu_dat = fig_nu_dat.colorbar(im_nu_dat, cax=cbax_nu_dat)
+# plt.savefig('nu_dat_grid.pdf')
+#
+# # VERTICAL VELOCITY AVERAGE
+# fig_vbar_Z1, axes_vbar_Z1 = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
+# fig_vbar_Z1.set_figheight(9)
+# fig_vbar_Z1.set_figwidth(13)
+# #plt.subplots_adjust(wspace=wspace_double_cbax)
+# ax_vbar_Z1 = axes_vbar_Z1[0] #Plot
+# cbax_vbar_Z1 = axes_vbar_Z1[1] #Colorbar
+# im_vbar_Z1 = ax_vbar_Z1.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh,
+#                                     np.nan_to_num(vbar_Z1_dat_grid), cmap='seismic',
+#                                     vmin=-30, vmax=30)
+# cb_vbar_Z1 = fig_nu_dat.colorbar(im_vbar_Z1, cax=cbax_vbar_Z1)
+# plt.savefig('vbar_Z1_dat_grid.pdf')
+#
+# # RADIAL VELOCITY AVERAGE
+# fig_vbar_R1, axes_vbar_R1 = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
+# fig_vbar_R1.set_figheight(9)
+# fig_vbar_R1.set_figwidth(13)
+# #plt.subplots_adjust(wspace=wspace_double_cbax)
+# ax_vbar_R1 = axes_vbar_R1[0] #Plot
+# cbax_vbar_R1 = axes_vbar_R1[1] #Colorbar
+# im_vbar_R1 = ax_vbar_R1.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh,
+#                                     np.nan_to_num(vbar_R1_dat_grid), cmap='magma')
+# cb_vbar_R1 = fig_nu_dat.colorbar(im_vbar_R1, cax=cbax_vbar_R1)
+# plt.savefig('vbar_R1_dat_grid.pdf')
+#
+# # VZ VELOCITY AVERAGE
+# fig_vbar_RZ, axes_vbar_RZ = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
+# fig_vbar_RZ.set_figheight(9)
+# fig_vbar_RZ.set_figwidth(13)
+# #plt.subplots_adjust(wspace=wspace_double_cbax)
+# ax_vbar_RZ = axes_vbar_RZ[0] #Plot
+# cbax_vbar_RZ = axes_vbar_RZ[1] #Colorbar
+# im_vbar_RZ = ax_vbar_RZ.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh,
+#                                     np.nan_to_num(vbar_RZ_dat_grid), cmap='seismic',
+#                                     vmin=-5000, vmax=5000)
+# cb_vbar_RZ = fig_nu_dat.colorbar(im_vbar_RZ, cax=cbax_vbar_RZ)
+# plt.savefig('vbar_RZ_dat_grid.pdf')
 
 
 
