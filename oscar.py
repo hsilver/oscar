@@ -7,6 +7,7 @@ import scipy.stats as stats
 import multiprocessing as mp
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from physt import h2 as physt_h2
 
 
 def calc_epoch_T(epoch):
@@ -42,8 +43,7 @@ def epoch_angles(epoch):
     else:
         raise exception('Wrong epoch name')
 
-def astrometric_to_galactocentric(ra, dec, para, pm_ra, pm_dec, vr,
-    Rsun, phisun, Zsun, vRsun,vYsun,vZsun, epoch_T):
+def astrometric_to_galactocentric(ra, dec, para, pm_ra, pm_dec, vr, Rsun, phisun, Zsun, vRsun,vYsun,vZsun, epoch_T):
     """
     Frankensteined together from Jo Bovy's galpy code. Any errors most likely
     attributable to HS.
@@ -300,7 +300,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
 
 def sample_transform_bin(astrometric_means, astrometric_covariances,
                             cholesky_astrometric_covariances,
-                            solar_pomo_means, solar_pomo_covarianves,
+                            solar_pomo_means, solar_pomo_covariances,
                             epoch_T, seed):
     #https://stackoverflow.com/questions/14920272/generate-a-data-set-consisting-of-n-100-2-dimensional-samples
 
@@ -312,7 +312,7 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
     uncorrelated_sample = np.random.standard_normal((Nstars,6))
     stars_sample = np.array([np.dot(cholesky_astrometric_covariances[ii], uncorrelated_sample[ii]) + astrometric_means[ii] for ii in range(Nstars)])
 
-    solar_pomo_sample = solar_pomo_means #UPDATE
+    solar_pomo_sample = rand.multivariate_normal(solar_pomo_means, solar_pomo_covariances)
 
     Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec = astrometric_to_galactocentric(
                     stars_sample[:,0], stars_sample[:,1], stars_sample[:,2],
@@ -364,10 +364,16 @@ deg_to_rad = np.pi/180
 mas_to_rad = (np.pi/6.48E8)
 maspyr_to_radps = np.pi/(6.48E8 * 31557600)
 
+single_core = True
+
 #Set binning
+#Physt test
+pdb.set_trace()
+histogram = physt_h2(Rg_vec, Zg_vec, (40,40), name='Quantile bins')
+
 phi_limit = [-np.pi/8,np.pi/8]
-R_edges = np.linspace(6000,10000,40)
-Z_edges = np.linspace(-2000,2000,40)
+R_edges = np.linspace(6000,10000,100)
+Z_edges = np.linspace(-1500,1500,100)
 
 R_bin_centers = (R_edges[1:] + R_edges[:-1])/2
 Z_bin_centers = (Z_edges[1:] + Z_edges[:-1])/2
@@ -382,14 +388,16 @@ for (aa,bb), dummy in np.ndenumerate(bin_vol_grid):
 
 
 #Solar Position and Motion model
+#solar_pomo_means = np.array([8200.,0.,100., 14.,238.,5.])
 solar_pomo_means = np.array([8200.,0.,100., 14.,238.,5.])
-#solar_pomo_means = np.array([8200.,0.,100., 0.,0.,0.])
-solar_pomo_covarianves = np.zeros([6,6])
+#solar_pomo_covariances = np.zeros([6,6])
+solar_pomo_covariances = np.identity(6) * solar_pomo_means * 0.1 #10% errors
+
 
 
 #PROCESS DATA OR LOAD FROM CACHE
-file_name = 'cache_5_feb_full_sample_100_samples'
-codemode = 'LOAD' # 'LOAD'
+file_name = 'cache_5_feb_full_sample_pomo_errors_more_bins'
+codemode = 'SAVE' # 'LOAD'
 
 if codemode == 'LOAD':
     data_mean_grids, sigma_meas_grids,\
@@ -399,7 +407,7 @@ if codemode == 'LOAD':
 
 elif codemode == 'SAVE':
     #Import Astrometric Data
-    data_folder = '/Users/hsilver/Physics_Projects/Astrometric_Data/Gaia_DR2_subsamples/'
+    data_folder = '../Astrometric_Data/Gaia_DR2_subsamples/'
     #data_file = 'gaiaDR2_6D_test_sample_100k-result.csv'
     #data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5_Nstars_20000.csv'
     data_file = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5Nstars_1333998.csv'
@@ -446,51 +454,39 @@ elif codemode == 'SAVE':
     #Calculate epoch_T matrix
     epoch_T = calc_epoch_T('J2000')
 
-    #Linear Sample Transform Bin
-    all_binned_data_vectors = []
-    start = time.time()
-    for jj in range(N_samplings):
-        print('Sample ', jj, ' of ', N_samplings)
-        binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
-                                    cholesky_astrometric_covariances,
-                                    solar_pomo_means, solar_pomo_covarianves,
-                                    epoch_T,jj)
-        all_binned_data_vectors.append(binned_data_vector)
-    all_binned_data_vectors = np.array(all_binned_data_vectors)
-    print('\nLinear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
-    print('Time per sample: ', (time.time()-start)/N_samplings, ' s\n')
+    #Calculate Quantile Binning 
+    histogram = physt_h2(Rg_vec, Zg_vec, "quantile", (40,40))
 
-    # #Multiprocessor Pool
-    # start = time.time()
-    # pool = mp.Pool(processes=2)
-    # results = [pool.apply_async(sample_transform_bin,
-    #                         args = (astrometric_means, astrometric_covariances,
-    #                                 cholesky_astrometric_covariances,
-    #                                 solar_pomo_means, solar_pomo_covarianves,
-    #                                 epoch_T, seed)) for seed in range(N_samplings)]
-    # output = [p.get() for p in results]
-    # all_binned_data_vectors = np.array(output)
-    # end = time.time()
-    # print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
-    # print('Wall time per sample: ', (end-start)/N_samplings)
-    # pdb.set_trace()
+    if single_core:
+        #Linear Sample Transform Bin
+        all_binned_data_vectors = []
+        start = time.time()
+        for jj in range(N_samplings):
+            print('Sample ', jj, ' of ', N_samplings)
+            binned_data_vector = sample_transform_bin(astrometric_means, astrometric_covariances,
+                                        cholesky_astrometric_covariances,
+                                        solar_pomo_means, solar_pomo_covariances,
+                                        epoch_T,jj)
+            all_binned_data_vectors.append(binned_data_vector)
+        all_binned_data_vectors = np.array(all_binned_data_vectors)
+        print('\nLinear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
+        print('Time per sample: ', (time.time()-start)/N_samplings, ' s\n')
 
-    # #Multiprocessor via Process class
-    # output = mp.Queue()
-    # processes = [mp.Process(target=sample_transform_bin,
-    #                         args = (astrometric_means, astrometric_covariances,
-    #                                 cholesky_astrometric_covariances,
-    #                                 solar_pomo_means, solar_pomo_covarianves,
-    #                                 epoch_T, seed)) for seed in range(N_samplings)]
-    # # Run processes
-    # for p in processes:
-    #     p.start()
-    # # Exit the completed processes
-    # for p in processes:
-    #     p.join()
-    # # Get process results from the output queue
-    # results = [output.get() for p in processes]
-
+    else:
+        #Multiprocessor Pool
+        print('Starting Parallel Sampling')
+        start = time.time()
+        pool = mp.Pool(processes=6)
+        results = [pool.apply_async(sample_transform_bin,
+                                args = (astrometric_means, astrometric_covariances,
+                                        cholesky_astrometric_covariances,
+                                        solar_pomo_means, solar_pomo_covariances,
+                                        epoch_T, seed)) for seed in range(N_samplings)]
+        output = [p.get() for p in results]
+        all_binned_data_vectors = np.array(output)
+        end = time.time()
+        print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
+        print('Wall time per sample: ', (end-start)/N_samplings)
 
     #Calculate means and covariances, Skewness, Kurtosis
     data_mean = np.mean(all_binned_data_vectors, axis=0)
@@ -607,7 +603,11 @@ nu_err_grid = sigma_total_counts_grid/bin_vol_grid
 # TRACER DENSITY
 plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, nu_dat_grid,
                 'nu_data.pdf', colormap = 'magma',
-                lognorm = False, cb_label='Tracer density stars [stars pc$^{-3}$]')
+                lognorm = True, cb_label='Tracer density stars [stars pc$^{-3}$]')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, counts_grid,
+                'nu_data_pure_counts.pdf', colormap = 'magma',
+                lognorm = True, vmin=10,
+                cb_label='Star count [stars per bin]')
 plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, gaussianity_pval_counts_grid,
                 'nu_gauss_pval.pdf', colormap = 'magma',
                 lognorm = True, vmin=1e-2, vmax=1.,
@@ -621,7 +621,10 @@ plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_counts_gri
                 lognorm = False, vmin=1e-1, vmax=1.,
                 cb_label = 'Tracer density kurtosis z-score')
 
-#Vertical Velocity
+
+
+
+#Vertical Velocity vZ1
 plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, vbar_Z1_dat_grid,
                 'vbar_Z1_data.pdf', colormap = 'seismic',
                 lognorm = False, vmin=-30., vmax=30.,
@@ -639,7 +642,25 @@ plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_vbar_Z1_da
                 lognorm = False, vmin=1e-1, vmax=1.,
                 cb_label = '$\overline{v_Z}$  kurtosis z-score')
 
-#Radial Velocity
+#Vertical Velocity vZZ
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, vbar_ZZ_dat_grid,
+                'vbar_ZZ_data.pdf', colormap = 'magma',
+                lognorm = False, vmin=0., vmax=4000.,
+                cb_label='Vertical velocity $\overline{v_Z v_Z}$ [km$^{2}$ s$^{-2}$]')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, gaussianity_pval_vbar_ZZ_dat_grid,
+                'vbar_ZZ_gauss_pval.pdf', colormap = 'magma',
+                lognorm = True, vmin=1e-2, vmax=1.,
+                cb_label='$\overline{v_Z v_Z}$  gaussianity p-value')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, skewness_stat_vbar_ZZ_dat_grid,
+                'vbar_ZZ_skew_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_Z v_Z}$  skewness z-score')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_vbar_ZZ_dat_grid,
+                'vbar_Z1_kurt_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_Z v_Z}$  kurtosis z-score')
+
+#Radial Velocity vR
 plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, vbar_R1_dat_grid,
                 'vbar_R1_data.pdf', colormap = 'magma',
                 lognorm = False, vmin=0., vmax=60.,
@@ -657,7 +678,42 @@ plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_vbar_R1_da
                 lognorm = False, vmin=1e-1, vmax=1.,
                 cb_label = '$\overline{v_R}$  kurtosis z-score')
 
+#Radial Velocity vRR
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, vbar_RR_dat_grid,
+                'vbar_RR_data.pdf', colormap = 'magma',
+                lognorm = False, vmin=0., vmax=5000.,
+                cb_label='Radial velocity $\overline{v_R v_R}$ [km$^{2}$ s$^{-2}$]')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, gaussianity_pval_vbar_RR_dat_grid,
+                'vbar_RR_gauss_pval.pdf', colormap = 'magma',
+                lognorm = True, vmin=1e-2, vmax=1.,
+                cb_label='$\overline{v_R v_R}$  gaussianity p-value')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, skewness_stat_vbar_RR_dat_grid,
+                'vbar_RR_skew_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_R v_R}$  Skewness z-score')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_vbar_RR_dat_grid,
+                'vbar_RR_kurt_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_R v_R}$  kurtosis z-score')
 
+
+#Tilt Term vRvZ
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, vbar_RZ_dat_grid,
+                'vbar_RZ_data.pdf', colormap = 'seismic',
+                lognorm = False, vmin=-3000., vmax=3000.,
+                cb_label='RZ velocity cross term $\overline{v_R v_Z}$ [km$^{2}$ s$^{-2}$]')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, gaussianity_pval_vbar_RZ_dat_grid,
+                'vbar_RZ_gauss_pval.pdf', colormap = 'magma',
+                lognorm = True, vmin=1e-2, vmax=1.,
+                cb_label='$\overline{v_R v_Z}$  gaussianity p-value')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, skewness_stat_vbar_RZ_dat_grid,
+                'vbar_RZ_skew_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_R v_Z}$  Skewness z-score')
+plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_vbar_RZ_dat_grid,
+                'vbar_RZ_kurt_stat.pdf', colormap = 'magma',
+                lognorm = False, vmin=1e-1, vmax=1.,
+                cb_label = '$\overline{v_R v_Z}$  kurtosis z-score')
 
 
 
