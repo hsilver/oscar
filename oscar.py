@@ -302,8 +302,9 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
                             cholesky_astrometric_covariances,
                             solar_pomo_means, solar_pomo_covariances,
                             epoch_T, seed):
+    """
     #https://stackoverflow.com/questions/14920272/generate-a-data-set-consisting-of-n-100-2-dimensional-samples
-
+    """
     rand.seed(int(seed + int(time.time())%10000+1))
     # stars_sample = np.array([rand.multivariate_normal(astrometric_means[ii],
     #                     astrometric_covariances[ii]) for ii in range(Nstars)])
@@ -320,11 +321,9 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
                     solar_pomo_sample[0], solar_pomo_sample[1], solar_pomo_sample[2],
                     solar_pomo_sample[3], solar_pomo_sample[4], solar_pomo_sample[5],
                     epoch_T)
-
     binned_data_vector = binning(Rg_vec, phig_vec, Zg_vec,
                                 vRg_vec, vTg_vec, vZg_vec,
                                 phi_limit, R_edges, Z_edges).flatten()
-
     return binned_data_vector
 
 def plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, data_grid,
@@ -333,7 +332,6 @@ def plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, data_grid,
                     lognorm = False, vmin=None, vmax=None,
                     ylabel = 'Z [pc]', xlabel = 'R [pc]',
                     cb_label = ' '):
-
     fig, axes = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
     fig.set_figheight(fig_height)
     fig.set_figwidth(fig_width)
@@ -351,6 +349,7 @@ def plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, data_grid,
     cb = fig.colorbar(im, cax=cbax)
     cb.set_label(label=cb_label)
     plt.savefig(file_name)
+    return
 
 
 
@@ -359,7 +358,7 @@ def plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, data_grid,
 
 
 # Set Constants and Parameters
-N_samplings = 100
+N_samplings = 10
 deg_to_rad = np.pi/180
 mas_to_rad = (np.pi/6.48E8)
 maspyr_to_radps = np.pi/(6.48E8 * 31557600)
@@ -367,28 +366,12 @@ maspyr_to_radps = np.pi/(6.48E8 * 31557600)
 single_core = True
 
 #Set binning
-#Physt test
-pdb.set_trace()
-histogram = physt_h2(Rg_vec, Zg_vec, (40,40), name='Quantile bins')
 
 phi_limit = [-np.pi/8,np.pi/8]
-R_edges = np.linspace(6000,10000,100)
-Z_edges = np.linspace(-1500,1500,100)
-
-R_bin_centers = (R_edges[1:] + R_edges[:-1])/2
-Z_bin_centers = (Z_edges[1:] + Z_edges[:-1])/2
-R_data_coords_mesh, Z_data_coords_mesh = np.meshgrid(R_bin_centers, Z_bin_centers, indexing='ij')
-
-bin_vol_grid= np.zeros([len(R_edges) - 1, len(Z_edges)-1])
-for (aa,bb), dummy in np.ndenumerate(bin_vol_grid):
-    bin_vol_grid[aa,bb] = 0.5 * abs(phi_limit[1]-phi_limit[0])\
-                    * abs(R_edges[aa+1]**2 - R_edges[aa]**2)\
-                    * abs(Z_edges[bb+1] - Z_edges[bb])
-
-
+num_R_bins = 100
+num_Z_bins = 100
 
 #Solar Position and Motion model
-#solar_pomo_means = np.array([8200.,0.,100., 14.,238.,5.])
 solar_pomo_means = np.array([8200.,0.,100., 14.,238.,5.])
 #solar_pomo_covariances = np.zeros([6,6])
 solar_pomo_covariances = np.identity(6) * solar_pomo_means * 0.1 #10% errors
@@ -396,7 +379,7 @@ solar_pomo_covariances = np.identity(6) * solar_pomo_means * 0.1 #10% errors
 
 
 #PROCESS DATA OR LOAD FROM CACHE
-file_name = 'cache_5_feb_full_sample_pomo_errors_more_bins'
+file_name = 'cache_5_feb_full_sample_quartile_binning_test'
 codemode = 'SAVE' # 'LOAD'
 
 if codemode == 'LOAD':
@@ -454,8 +437,34 @@ elif codemode == 'SAVE':
     #Calculate epoch_T matrix
     epoch_T = calc_epoch_T('J2000')
 
-    #Calculate Quantile Binning 
-    histogram = physt_h2(Rg_vec, Zg_vec, "quantile", (40,40))
+    #Calculate Quantile Binning
+    galactocentric_means = astrometric_to_galactocentric(
+                            astrometric_means[:,0], astrometric_means[:,1],
+                            astrometric_means[:,2], astrometric_means[:,3],
+                            astrometric_means[:,4], astrometric_means[:,5],
+                            solar_pomo_means[0], solar_pomo_means[1],
+                            solar_pomo_means[2], solar_pomo_means[3],
+                            solar_pomo_means[4], solar_pomo_means[5],
+                            epoch_T)
+    phi_cut_locs = np.where((galactocentric_means[1]>phi_limit[0]) & (galactocentric_means[1]<phi_limit[1]))
+    Rg_vec_means = galactocentric_means[0][phi_cut_locs]
+    Zg_vec_means = galactocentric_means[2][phi_cut_locs]
+
+    histogram = physt_h2(Rg_vec_means, Zg_vec_means, "quantile", (40,40))
+
+    R_edges = histogram.numpy_bins[0][1:-1]
+    Z_edges = histogram.numpy_bins[1][1:-1]
+
+    R_bin_centers = (R_edges[1:] + R_edges[:-1])/2
+    Z_bin_centers = (Z_edges[1:] + Z_edges[:-1])/2
+    R_data_coords_mesh, Z_data_coords_mesh = np.meshgrid(R_bin_centers, Z_bin_centers, indexing='ij')
+
+    bin_vol_grid= np.zeros([len(R_edges) - 1, len(Z_edges)-1])
+    for (aa,bb), dummy in np.ndenumerate(bin_vol_grid):
+        bin_vol_grid[aa,bb] = 0.5 * abs(phi_limit[1]-phi_limit[0])\
+                        * abs(R_edges[aa+1]**2 - R_edges[aa]**2)\
+                        * abs(Z_edges[bb+1] - Z_edges[bb])
+
 
     if single_core:
         #Linear Sample Transform Bin
@@ -700,7 +709,7 @@ plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_vbar_RR_da
 #Tilt Term vRvZ
 plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, vbar_RZ_dat_grid,
                 'vbar_RZ_data.pdf', colormap = 'seismic',
-                lognorm = False, vmin=-3000., vmax=3000.,
+                lognorm = False, vmin=-1000., vmax=1000.,
                 cb_label='RZ velocity cross term $\overline{v_R v_Z}$ [km$^{2}$ s$^{-2}$]')
 plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, gaussianity_pval_vbar_RZ_dat_grid,
                 'vbar_RZ_gauss_pval.pdf', colormap = 'magma',
@@ -717,56 +726,6 @@ plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, kurtosis_stat_vbar_RZ_da
 
 
 
-
-
-# fig_nu_dat, axes_nu_dat = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
-# fig_nu_dat.set_figheight(9)
-# fig_nu_dat.set_figwidth(13)
-# #plt.subplots_adjust(wspace=wspace_double_cbax)
-# ax_nu_dat = axes_nu_dat[0] #Plot
-# cbax_nu_dat = axes_nu_dat[1] #Colorbar
-# im_nu_dat = ax_nu_dat.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh,
-#                                     nu_dat_grid, cmap='magma')
-# cb_nu_dat = fig_nu_dat.colorbar(im_nu_dat, cax=cbax_nu_dat)
-# plt.savefig('nu_dat_grid.pdf')
-#
-# # VERTICAL VELOCITY AVERAGE
-# fig_vbar_Z1, axes_vbar_Z1 = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
-# fig_vbar_Z1.set_figheight(9)
-# fig_vbar_Z1.set_figwidth(13)
-# #plt.subplots_adjust(wspace=wspace_double_cbax)
-# ax_vbar_Z1 = axes_vbar_Z1[0] #Plot
-# cbax_vbar_Z1 = axes_vbar_Z1[1] #Colorbar
-# im_vbar_Z1 = ax_vbar_Z1.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh,
-#                                     np.nan_to_num(vbar_Z1_dat_grid), cmap='seismic',
-#                                     vmin=-30, vmax=30)
-# cb_vbar_Z1 = fig_nu_dat.colorbar(im_vbar_Z1, cax=cbax_vbar_Z1)
-# plt.savefig('vbar_Z1_dat_grid.pdf')
-#
-# # RADIAL VELOCITY AVERAGE
-# fig_vbar_R1, axes_vbar_R1 = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
-# fig_vbar_R1.set_figheight(9)
-# fig_vbar_R1.set_figwidth(13)
-# #plt.subplots_adjust(wspace=wspace_double_cbax)
-# ax_vbar_R1 = axes_vbar_R1[0] #Plot
-# cbax_vbar_R1 = axes_vbar_R1[1] #Colorbar
-# im_vbar_R1 = ax_vbar_R1.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh,
-#                                     np.nan_to_num(vbar_R1_dat_grid), cmap='magma')
-# cb_vbar_R1 = fig_nu_dat.colorbar(im_vbar_R1, cax=cbax_vbar_R1)
-# plt.savefig('vbar_R1_dat_grid.pdf')
-#
-# # VZ VELOCITY AVERAGE
-# fig_vbar_RZ, axes_vbar_RZ = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
-# fig_vbar_RZ.set_figheight(9)
-# fig_vbar_RZ.set_figwidth(13)
-# #plt.subplots_adjust(wspace=wspace_double_cbax)
-# ax_vbar_RZ = axes_vbar_RZ[0] #Plot
-# cbax_vbar_RZ = axes_vbar_RZ[1] #Colorbar
-# im_vbar_RZ = ax_vbar_RZ.pcolormesh(R_data_coords_mesh, Z_data_coords_mesh,
-#                                     np.nan_to_num(vbar_RZ_dat_grid), cmap='seismic',
-#                                     vmin=-5000, vmax=5000)
-# cb_vbar_RZ = fig_nu_dat.colorbar(im_vbar_RZ, cax=cbax_vbar_RZ)
-# plt.savefig('vbar_RZ_dat_grid.pdf')
 
 
 
