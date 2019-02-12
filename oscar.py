@@ -328,7 +328,7 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
     binned_data_vector, binned_std_vector = binning(Rg_vec, phig_vec, Zg_vec,
                                 vRg_vec, vTg_vec, vZg_vec,
                                 phi_limits, R_edges, Z_edges)
-
+    
     return binned_data_vector.flatten(), binned_std_vector.flatten()
 
 def plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, data_grid,
@@ -464,11 +464,11 @@ class oscar_gaia_data:
 
         # Determine Binning
         if binning_type == 'input':
-            R_edges = self.input_R_edges
-            Z_edges = self.input_Z_edges
+            self.R_edges = self.input_R_edges
+            self.Z_edges = self.input_Z_edges
         elif binning_type == 'linear':
-            R_edges = np.linspace(self.Rmin, self.Rmax, self.num_R_bins)
-            Z_edges = np.linspace(self.Zmin, self.Zmax, self.num_Z_bins)
+            self.R_edges = np.linspace(self.Rmin, self.Rmax, self.num_R_bins)
+            self.Z_edges = np.linspace(self.Zmin, self.Zmax, self.num_Z_bins)
         elif binning_type == 'quartile':
             galactocentric_means = astrometric_to_galactocentric(
                     astrometric_means[:,0], astrometric_means[:,1],
@@ -543,7 +543,7 @@ class oscar_gaia_data:
         else:
             print('No previous sampling found, running from scratch')
 
-            if False:#N_cores == 1: TEST
+            if N_cores == 1:
                 #Linear Sample Transform Bin
                 all_binned_data_vectors = []
                 start = time.time()
@@ -884,7 +884,8 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 10)
+    oscar_test = oscar_gaia_data(N_samplings = 11, N_cores=1,num_R_bins=5,num_Z_bins=10,
+                                    binning_type='linear')
     oscar_test.plot_histograms()
     oscar_test.plot_correlation_matrix()
 
