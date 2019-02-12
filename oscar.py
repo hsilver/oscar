@@ -407,6 +407,7 @@ class oscar_gaia_data:
         self.input_Z_edges = input_Z_edges
         self.phi_limits = phi_limits
         self.N_samplings = N_samplings
+        self.N_cores = N_cores
 
 
         # Set Constants and Parameters
@@ -563,7 +564,7 @@ class oscar_gaia_data:
                 #Multiprocessor Pool
                 print('Starting Parallel Sampling')
                 start = time.time()
-                pool = mp.Pool(processes=1)
+                pool = mp.Pool(processes=self.N_cores)
                 results = [pool.apply_async(sample_transform_bin,
                                         args = (astrometric_means, astrometric_covariances,
                                                 cholesky_astrometric_covariances,
