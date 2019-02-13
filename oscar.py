@@ -328,7 +328,7 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
     binned_data_vector, binned_std_vector = binning(Rg_vec, phig_vec, Zg_vec,
                                 vRg_vec, vTg_vec, vZg_vec,
                                 phi_limits, R_edges, Z_edges)
-    
+
     return binned_data_vector.flatten(), binned_std_vector.flatten()
 
 def plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh, data_grid,
@@ -369,6 +369,7 @@ def plot_matrix_heatmap(matrix, out_file_name,
 
     im = ax.pcolormesh(matrix, cmap = colormap)
     ax.invert_yaxis()
+    ax.set_aspect('equal')
     cb = fig.colorbar(im, cax=cbax)
     cb.set_label(label=cb_label)
 
@@ -879,7 +880,25 @@ class oscar_gaia_data:
                         cb_label = '$\overline{v_R v_Z}$  kurtosis z-score')
 
     def plot_correlation_matrix(self):
-        plot_matrix_heatmap(self.data_corr, 'correlation_matrix.pdf')
+        # Total Correlation Matrix
+        plot_matrix_heatmap(self.data_corr, 'correlation_matrix_all.pdf')
+        pdb.set_trace()
+        #Counts correlations
+        block_size = len(self.R_data_coords_mesh.flatten())
+        file_name_vec = ['correlation_matrix_counts.pdf',
+                            'correlation_matrix_vbar_R1.pdf',
+                            'correlation_matrix_vbar_p1.pdf',
+                            'correlation_matrix_vbar_Z1.pdf',
+                            'correlation_matrix_vbar_RR.pdf',
+                            'correlation_matrix_vbar_pp.pdf',
+                            'correlation_matrix_vbar_ZZ.pdf',
+                            'correlation_matrix_vbar_RZ.pdf']
+        for NN in range(0,8):
+            plot_matrix_heatmap(self.data_corr[NN*block_size:(NN+1)*block_size,
+                                                NN*block_size:(NN+1)*block_size],
+                                file_name_vec[NN],colormap='seismic')
+
+
 
 
 if __name__ == "__main__":
