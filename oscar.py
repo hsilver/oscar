@@ -760,10 +760,6 @@ class oscar_gaia_data:
         # gaussianity_pval_vbar_ZZ_dat_grid, gaussianity_pval_vbar_ZZ_std_grid,\
         # gaussianity_pval_vbar_RZ_dat_grid, gaussianity_pval_vbar_RZ_std_grid = self.gaussianity_pval_grids
 
-
-
-
-
         # TRACER DENSITY
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, self.nu_dat_grid,
                         'nu_data.pdf', colormap = 'magma',
@@ -791,7 +787,8 @@ class oscar_gaia_data:
         #Vertical Velocity vZ1
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, self.vbar_Z1_dat_grid,
                         'vbar_Z1_data.pdf', colormap = 'seismic',
-                        lognorm = False, vmin=-30., vmax=30.,
+                        lognorm = False, vmin=-np.amax(abs(self.vbar_Z1_dat_grid)),
+                        vmax=np.amax(abs(self.vbar_Z1_dat_grid)),
                         cb_label='Vertical velocity $\overline{v_Z}$ [km s$^{-1}$]')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, gaussianity_pval_vbar_Z1_dat_grid,
                         'vbar_Z1_gauss_pval.pdf', colormap = 'magma',
@@ -809,7 +806,7 @@ class oscar_gaia_data:
         #Vertical Velocity vZZ
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, self.vbar_ZZ_dat_grid,
                         'vbar_ZZ_data.pdf', colormap = 'magma',
-                        lognorm = False, vmin=0., vmax=4000.,
+                        lognorm = False, vmin=0., vmax=np.amax(self.vbar_ZZ_dat_grid),
                         cb_label='Vertical velocity $\overline{v_Z v_Z}$ [km$^{2}$ s$^{-2}$]')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, gaussianity_pval_vbar_ZZ_dat_grid,
                         'vbar_ZZ_gauss_pval.pdf', colormap = 'magma',
@@ -827,7 +824,7 @@ class oscar_gaia_data:
         #Radial Velocity vR
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, self.vbar_R1_dat_grid,
                         'vbar_R1_data.pdf', colormap = 'magma',
-                        lognorm = False, vmin=0., vmax=60.,
+                        lognorm = False, vmin=0., vmax=np.amax(self.vbar_R1_dat_grid),
                         cb_label='Radial velocity $\overline{v_R}$ [km s$^{-1}$]')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, gaussianity_pval_vbar_R1_dat_grid,
                         'vbar_R1_gauss_pval.pdf', colormap = 'magma',
@@ -845,7 +842,7 @@ class oscar_gaia_data:
         #Radial Velocity vRR
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, self.vbar_RR_dat_grid,
                         'vbar_RR_data.pdf', colormap = 'magma',
-                        lognorm = False, vmin=0., vmax=5000.,
+                        lognorm = False, vmin=0., vmax=np.amax(self.vbar_RR_dat_grid),
                         cb_label='Radial velocity $\overline{v_R v_R}$ [km$^{2}$ s$^{-2}$]')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, gaussianity_pval_vbar_RR_dat_grid,
                         'vbar_RR_gauss_pval.pdf', colormap = 'magma',
@@ -864,7 +861,8 @@ class oscar_gaia_data:
         #Tilt Term vRvZ
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, self.vbar_RZ_dat_grid,
                         'vbar_RZ_data.pdf', colormap = 'seismic',
-                        lognorm = False, vmin=-1000., vmax=1000.,
+                        lognorm = False, vmin=-np.amax(abs(self.vbar_RZ_dat_grid)),
+                        vmax=np.amax(abs(self.vbar_RZ_dat_grid)),
                         cb_label='RZ velocity cross term $\overline{v_R v_Z}$ [km$^{2}$ s$^{-2}$]')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, gaussianity_pval_vbar_RZ_dat_grid,
                         'vbar_RZ_gauss_pval.pdf', colormap = 'magma',
@@ -882,7 +880,7 @@ class oscar_gaia_data:
     def plot_correlation_matrix(self):
         # Total Correlation Matrix
         plot_matrix_heatmap(self.data_corr, 'correlation_matrix_all.pdf')
-        pdb.set_trace()
+
         #Counts correlations
         block_size = len(self.R_data_coords_mesh.flatten())
         file_name_vec = ['correlation_matrix_counts.pdf',
