@@ -417,9 +417,21 @@ class oscar_gaia_data:
         maspyr_to_radps = np.pi/(6.48E8 * 31557600)
 
         # Solar Position and Motion model
-        self.solar_pomo_means = np.array([8200.,0.,100., 14.,238.,5.])
-        self.solar_pomo_covariances = np.identity(6) * self.solar_pomo_means * 0.1 #10% errors
+        self.solar_pomo_means = np.array([8200.,0.,20.8, 10.,248.,7.])
+        self.solar_pomo_stds = np.array([100., 0., 0.3, 1., 3., 0.5])
+        self.solar_pomo_covariances = np.identity(6) * self.solar_pomo_stds**2
+        """
+        Bland Hawthorn et al 2016 review
+        R0 = 8200±100 pc
+        Z0 = 25±5 pc
+        Vgsun = 248±3 km/s, tangential velocity relative to Sgr A*
+        Usun = 10.0±1 km/s, radial, positive towards the galactic center
+        Vsun = 11.0±2 km/s, in direction of rotation
+        Wsun = 7.0±0.5 km/s, vertical upwards positive
 
+        Bennet & Bovy 2018
+        Z0 = 20.8 ± 0.3 pc
+        """
         # Open data file
         datab = pd.read_csv(self.data_root + self.data_file_name) #astrometric_data_table
 
@@ -861,6 +873,24 @@ class oscar_gaia_data:
                         lognorm = False, vmin=1e-1, vmax=1.,
                         cb_label = '$\overline{v_R v_R}$  kurtosis z-score')
 
+        #Tangential Velocity vp
+        plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, self.vbar_p1_dat_grid,
+                        'vbar_p1_data.pdf', colormap = 'magma',
+                        lognorm = False, vmin=0., vmax=np.amax(self.vbar_p1_dat_grid),
+                        cb_label='Tangential velocity $\overline{v_p}$ [km s$^{-1}$]')
+        plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, gaussianity_pval_vbar_p1_dat_grid,
+                        'vbar_p1_gauss_pval.pdf', colormap = 'magma',
+                        lognorm = True, vmin=1e-2, vmax=1.,
+                        cb_label='$\overline{v_p}$  gaussianity p-value')
+        plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, skewness_stat_vbar_p1_dat_grid,
+                        'vbar_p1_skew_stat.pdf', colormap = 'magma',
+                        lognorm = False, vmin=1e-1, vmax=1.,
+                        cb_label = '$\overline{v_p}$  Skewness z-score')
+        plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, kurtosis_stat_vbar_p1_dat_grid,
+                        'vbar_p1_kurt_stat.pdf', colormap = 'magma',
+                        lognorm = False, vmin=1e-1, vmax=1.,
+                        cb_label = '$\overline{v_p}$  kurtosis z-score')
+
 
         #Tilt Term vRvZ
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh, self.vbar_RZ_dat_grid,
@@ -905,7 +935,7 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 11, N_cores=1,num_R_bins=5,num_Z_bins=10,
+    oscar_test = oscar_gaia_data(N_samplings = 11, N_cores=1,num_R_bins=6,num_Z_bins=10,
                                     binning_type='linear')
     oscar_test.plot_histograms()
     oscar_test.plot_correlation_matrix()
