@@ -581,11 +581,15 @@ class oscar_gaia_data:
                 print('Wall time per sample: ', (end-start)/N_samplings)
 
             #Calculate means and covariances, Skewness, Kurtosis
-
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
-            self.data_cov  = np.cov(all_binned_data_vectors.T)
-            self.data_corr = np.corrcoef(all_binned_data_vectors.T)
-            self.data_sigma2 = np.diag(self.data_cov)
+            try:
+                self.data_cov  = np.cov(all_binned_data_vectors.T)
+                self.data_corr = np.corrcoef(all_binned_data_vectors.T)
+                self.data_sigma2 = np.diag(self.data_cov)
+            except MemoryError:
+                self.data_cov = np.ones((len(self.data_mean), len(self.data_mean)))
+                self.data_corr = np.ones((len(self.data_mean), len(self.data_mean)))
+                self.data_sigma2 = np.var(all_binned_data_vectors)
 
             #Gaussianity test using D’Agostino and Pearson’s tests
             self.skewness_stat, self.skewness_pval = stats.skewtest(all_binned_data_vectors)
