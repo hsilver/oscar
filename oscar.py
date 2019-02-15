@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from physt import h2 as physt_h2
 import hashlib
+import sklearn
+import sklearn.covariance as sklcov
 
 
 def calc_epoch_T(epoch):
@@ -602,6 +604,19 @@ class oscar_gaia_data:
 
             #Calculate means and covariances, Skewness, Kurtosis
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
+            pdb.set_trace()
+
+            # self.data_cov  = np.cov(all_binned_data_vectors.T)
+            # self.data_corr = np.corrcoef(all_binned_data_vectors.T)
+            # self.data_sigma2 = np.diag(self.data_cov)
+
+            covariance_fit = sklcov.EmpiricalCovariance().fit(all_binned_data_vectors)
+            self.data_cov = covariance_fit.covariance_
+            self.data_sigma2 = np.diag(self.data_cov_skl)
+            data_sigma_inv = 1/np.sqrt(np.diag(self.data_cov))
+            data_sigma_inv = data_var_inv_skl.reshape(len(data_sigma_inv), 1)
+            self.data_corr = np.dot(data_sigma_inv, data_sigma_inv.T) * self.data_cov
+
             # try:
             #     self.data_cov  = np.cov(all_binned_data_vectors.T)
             #     self.data_corr = np.corrcoef(all_binned_data_vectors.T)
@@ -612,9 +627,9 @@ class oscar_gaia_data:
             #     self.data_corr = np.ones((len(self.data_mean), len(self.data_mean)))
             #     self.data_sigma2 = np.var(all_binned_data_vectors)
 
-            self.data_cov = 0.
-            self.data_corr = 0.
-            self.data_sigma2 = np.ones(self.data_mean.shape)
+            # self.data_cov = 0.
+            # self.data_corr = 0.
+            # self.data_sigma2 = np.ones(self.data_mean.shape)
 
             #Gaussianity test using D’Agostino and Pearson’s tests
             self.skewness_stat, self.skewness_pval = stats.skewtest(all_binned_data_vectors)
@@ -974,8 +989,8 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 500, N_cores=6,num_R_bins=100,num_Z_bins=101,
+    oscar_test = oscar_gaia_data(N_samplings = 11, N_cores=1,num_R_bins=50,num_Z_bins=51,
                                 Rmin = 5000, Rmax = 11000, Zmin= -2000, Zmax=2000,
                                     binning_type='linear')
     oscar_test.plot_histograms()
-    #oscar_test.plot_correlation_matrix()
+    oscar_test.plot_correlation_matrix()
