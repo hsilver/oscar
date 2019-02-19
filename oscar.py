@@ -604,17 +604,16 @@ class oscar_gaia_data:
 
             #Calculate means and covariances, Skewness, Kurtosis
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
-            pdb.set_trace()
 
             # self.data_cov  = np.cov(all_binned_data_vectors.T)
             # self.data_corr = np.corrcoef(all_binned_data_vectors.T)
             # self.data_sigma2 = np.diag(self.data_cov)
 
-            covariance_fit = sklcov.EmpiricalCovariance().fit(all_binned_data_vectors)
+            covariance_fit = sklcov.EmpiricalCovariance().fit(np.nan_to_num(all_binned_data_vectors))
             self.data_cov = covariance_fit.covariance_
-            self.data_sigma2 = np.diag(self.data_cov_skl)
+            self.data_sigma2 = np.diag(self.data_cov)
             data_sigma_inv = 1/np.sqrt(np.diag(self.data_cov))
-            data_sigma_inv = data_var_inv_skl.reshape(len(data_sigma_inv), 1)
+            data_sigma_inv = data_var_inv.reshape(len(data_sigma_inv), 1)
             self.data_corr = np.dot(data_sigma_inv, data_sigma_inv.T) * self.data_cov
 
             # try:
@@ -989,8 +988,8 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 11, N_cores=1,num_R_bins=50,num_Z_bins=51,
+    oscar_test = oscar_gaia_data(N_samplings = 12, N_cores=4,num_R_bins=50,num_Z_bins=51,
                                 Rmin = 5000, Rmax = 11000, Zmin= -2000, Zmax=2000,
                                     binning_type='linear')
     oscar_test.plot_histograms()
-    oscar_test.plot_correlation_matrix()
+    #oscar_test.plot_correlation_matrix()
