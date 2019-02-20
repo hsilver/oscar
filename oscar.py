@@ -489,9 +489,11 @@ class oscar_gaia_data:
         if binning_type == 'input':
             self.R_edges = self.input_R_edges
             self.Z_edges = self.input_Z_edges
+            self.num_R_bins = len(self.input_R_edges)
+            self.num_Z_bins = len(self.input_Z_edges)
         elif binning_type == 'linear':
-            self.R_edges = np.linspace(self.Rmin, self.Rmax, self.num_R_bins)
-            self.Z_edges = np.linspace(self.Zmin, self.Zmax, self.num_Z_bins)
+            self.R_edges = np.linspace(self.Rmin, self.Rmax, self.num_R_bins+1)
+            self.Z_edges = np.linspace(self.Zmin, self.Zmax, self.num_Z_bins+1)
         elif binning_type == 'quartile':
             galactocentric_means = astrometric_to_galactocentric(
                     astrometric_means[:,0], astrometric_means[:,1],
@@ -506,7 +508,7 @@ class oscar_gaia_data:
             Zg_vec_means = galactocentric_means[2][phi_cut_locs]
 
             physt_hist = physt_h2(Rg_vec_means, Zg_vec_means, "quantile",
-                        (self.num_R_bins,self.num_Z_bins))
+                        (self.num_R_bins+2,self.num_Z_bins+2))
             self.R_edges = physt_hist.numpy_bins[0][1:-1]
             self.Z_edges = physt_hist.numpy_bins[1][1:-1]
 
@@ -571,7 +573,7 @@ class oscar_gaia_data:
                 all_binned_data_vectors = []
                 start = time.time()
                 for jj in range(N_samplings):
-                    print('Sample ', jj, ' of ', N_samplings)
+                    print('Sample ', jj+1, ' of ', N_samplings)
                     binned_data_vector, binned_std_vector = sample_transform_bin(
                                         astrometric_means, astrometric_covariances,
                                         cholesky_astrometric_covariances,
@@ -603,40 +605,39 @@ class oscar_gaia_data:
                 print('Wall time per sample: ', (end-start)/N_samplings)
 
             #Calculate means and covariances, Skewness, Kurtosis
+            grid_shape = (8, len(self.R_edges)-1, len(self.Z_edges)-1)
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
+            nan_R_points = np.array([])
+            nan_Z_points = np.array([])
+            if np.isnan(all_binned_data_vectors).any():
+                #Locate NaN points, recommend new sample limits to remove them.
+                for data_vector in all_binned_data_vectors:
+                    nan_grid = np.isnan(data_vector).reshape(grid_shape)
+                    nan_R_points = np.concatenate([nan_R_points,self.R_data_coords_mesh[nan_grid[1]]])
+                    nan_Z_points = np.concatenate([nan_Z_points,self.Z_data_coords_mesh[nan_grid[1]]])
+                nan_R_points = np.unique(nan_R_points)
+                nan_Z_points = np.unique(nan_Z_points)
+                min_R = max(nan_R_points[nan_R_points < self.R_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
+                max_R = min(nan_R_points[nan_R_points > self.R_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
+                min_Z = max(nan_Z_points[nan_Z_points < self.Z_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
+                max_Z = min(nan_Z_points[nan_Z_points > self.Z_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
+                print('Data Vectors contain NaN due to zero star counts,likely due to zero star counts in some bins.')
+                print('The maximum NaN free box is:')
+                print('Rmin, Rmax = ', min_R, max_R)
+                print('Zmin, Zmax = ', min_Z, max_Z)
+                raise Exception('Data vectors contain NaN.')
 
-            # self.data_cov  = np.cov(all_binned_data_vectors.T)
-            # self.data_corr = np.corrcoef(all_binned_data_vectors.T)
-            # self.data_sigma2 = np.diag(self.data_cov)
-
-            covariance_fit = sklcov.EmpiricalCovariance().fit(np.nan_to_num(all_binned_data_vectors))
+            covariance_fit = sklcov.EmpiricalCovariance().fit(all_binned_data_vectors)
             self.data_cov = covariance_fit.covariance_
             self.data_sigma2 = np.diag(self.data_cov)
             data_sigma_inv = 1/np.sqrt(np.diag(self.data_cov))
-            data_sigma_inv = data_var_inv.reshape(len(data_sigma_inv), 1)
+            data_sigma_inv = data_sigma_inv.reshape(len(data_sigma_inv), 1)
             self.data_corr = np.dot(data_sigma_inv, data_sigma_inv.T) * self.data_cov
-
-            # try:
-            #     self.data_cov  = np.cov(all_binned_data_vectors.T)
-            #     self.data_corr = np.corrcoef(all_binned_data_vectors.T)
-            #     self.data_sigma2 = np.diag(self.data_cov)
-            # except MemoryError:
-            #     print('Covariance & Correlations Matrices are too large, causing a memory error')
-            #     self.data_cov = np.ones((len(self.data_mean), len(self.data_mean)))
-            #     self.data_corr = np.ones((len(self.data_mean), len(self.data_mean)))
-            #     self.data_sigma2 = np.var(all_binned_data_vectors)
-
-            # self.data_cov = 0.
-            # self.data_corr = 0.
-            # self.data_sigma2 = np.ones(self.data_mean.shape)
 
             #Gaussianity test using D’Agostino and Pearson’s tests
             self.skewness_stat, self.skewness_pval = stats.skewtest(all_binned_data_vectors)
             self.kurtosis_stat, self.kurtosis_pval = stats.kurtosistest(all_binned_data_vectors)
             self.gaussianity_stat, self.gaussianity_pval = stats.normaltest(all_binned_data_vectors)
-
-            #Reformat into individual quantities
-            grid_shape = (8, len(self.R_edges)-1, len(self.Z_edges)-1)
 
             # Reshape
             self.data_mean_grids = self.data_mean.reshape(grid_shape)
@@ -988,8 +989,8 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 12, N_cores=4,num_R_bins=50,num_Z_bins=51,
-                                Rmin = 5000, Rmax = 11000, Zmin= -2000, Zmax=2000,
+    oscar_test = oscar_gaia_data(N_samplings = 5, N_cores=1,num_R_bins=50,num_Z_bins=51,
+                                Rmin = 7000, Rmax = 9000, Zmin= -1500, Zmax=1500,
                                     binning_type='linear')
     oscar_test.plot_histograms()
     #oscar_test.plot_correlation_matrix()
