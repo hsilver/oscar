@@ -414,17 +414,17 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
 
     # Line plot
     spacing_param = 1
-    scaling_param = 1.2/np.amax(data_grid)
+    scaling_param = 1.5/np.amax(data_grid)
 
     min_data_and_err = min(0.,np.amin(data_grid), np.amin(data_grid+data_error_lower))
     max_data_and_err = max(0.,np.amax(data_grid), np.amin(data_grid+data_error_upper))
 
     negative_guidelines = np.arange(0,-min_data_and_err*scaling_param,0.2)
     positive_guidelines = np.arange(0,max_data_and_err*scaling_param,0.2)
-    for ng in negative_guidelines:
-        line_ax.axvline(-ng,ls='--',alpha=0.2)
-    for pg in positive_guidelines:
-        line_ax.axvline(pg,ls='--',alpha=0.2)
+    # for ng in negative_guidelines:
+    #     line_ax.axvline(-ng,ls='--',alpha=0.2)
+    # for pg in positive_guidelines:
+    #     line_ax.axvline(pg,ls='--',alpha=0.2)
     line_ax.axhline(0, xmin=min_data_and_err*scaling_param,
                         xmax=max_data_and_err*scaling_param,
                         ls='-')
@@ -439,10 +439,10 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
 
         # Interior Guidelines
         line_ax.axvline(zero_point,ls='-')
-        line_ax.axvline(zero_point+0.2,ls='--',alpha=0.2)
-        line_ax.axvline(zero_point+0.4,ls='--',alpha=0.2)
-        line_ax.axvline(zero_point+0.6,ls='--',alpha=0.2)
-        line_ax.axvline(zero_point+0.8,ls='--',alpha=0.2)
+        # line_ax.axvline(zero_point+0.2,ls='--',alpha=0.2)
+        # line_ax.axvline(zero_point+0.4,ls='--',alpha=0.2)
+        # line_ax.axvline(zero_point+0.6,ls='--',alpha=0.2)
+        # line_ax.axvline(zero_point+0.8,ls='--',alpha=0.2)
 
         line_ax.plot(data_values*scaling_param + zero_point, Z_values, ls='-')
         line_ax.plot((data_values+data_upper)*scaling_param + zero_point, Z_values, ls='-',
@@ -464,23 +464,37 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
         line_ax.spines['right'].set_visible(False)
         line_ax.xaxis.set_ticks_position('none')
         line_ax.yaxis.set_ticks_position('none')
-        line_ax.set_xticks(range(len(R_data_coords_mesh[:,0])))
-        line_ax.xaxis.set_ticklabels(R_data_coords_mesh[:,0])
+        line_ax.set_xticks(range(len(R_data_coords_mesh[:,0])), )
+        line_ax.xaxis.set_ticklabels(R_data_coords_mesh[:,0],
+                            rotation='vertical')
+        line_ax.xaxis.set_label_coords(0.08, -0.05)
+        line_ax.set_xlabel(xlabel + u"\u2192")
         line_ax.yaxis.set_ticklabels([])
 
 
     # Scale
     scale_ax.yaxis.set_ticklabels([])
     scale_ax.xaxis.set_ticklabels([])
-    scale_ax.xaxis.set_ticks_position('none')
+    #scale_ax.xaxis.set_ticks_position('none')
     scale_ax.yaxis.set_ticks_position('none')
     #scale_ax.set_xlabel(cb_label)
     scale_ax.spines['top'].set_visible(False)
     scale_ax.spines['left'].set_visible(False)
     scale_ax.spines['right'].set_visible(False)
     scale_ax.spines['bottom'].set_visible(False)
-    scale_ax.text(0,0, 'Guidelines are ' + str(0.2/scaling_param) + ' units apart.',
-                    fontsize = 16)
+    scale_ax.set_ylim([-1,1])
+
+    #if min(0.,np.amin(data_grid)) == 0:
+    scale_max = 10**int(round(np.log10(np.amax(abs(data_grid)))))
+    scale_ax.plot((0,scale_max*scaling_param), (0,0), ls='-', lw=2)
+    scale_ax.scatter(np.array([0,scale_max*scaling_param]), np.array([0,0]), marker='+',s=70)
+    scale_ax.xaxis.set_ticklabels([0,scale_max])
+    scale_ax.set_xticks([0,scale_max*scaling_param])
+    scale_ax.xaxis.set_label_coords(0.25, -0.5)
+    scale_ax.set_xlabel(cb_label)
+
+    # scale_ax.text(0,0, 'Guidelines are ' + str(0.2/scaling_param) + ' units apart.',
+    #                 fontsize = 16)
 
     # arrow_size = 1.0 * np.amax(data_grid) # in data units
     # arrow_start = 0.4 *  len(R_data_coords_mesh[:,0])*spacing_param
@@ -751,6 +765,7 @@ class oscar_gaia_data:
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
             nan_R_points = np.array([])
             nan_Z_points = np.array([])
+
             if np.isnan(all_binned_data_vectors).any():
                 #Locate NaN points, recommend new sample limits to remove them.
                 for data_vector in all_binned_data_vectors:
@@ -976,10 +991,15 @@ class oscar_gaia_data:
                         self.R_edges_mesh, self.Z_edges_mesh, self.nu_dat_grid,
                         'nu_data.pdf', colormap = 'magma',
                         Norm = 'lognorm', cb_label='Tracer density stars [stars pc$^{-3}$]')
+
+        masked_cmap = plt.cm.viridis
+        masked_cmap.set_bad(color='grey')
+        masked_counts = np.ma.masked_where(self.counts_grid < 100, self.counts_grid)
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
-                        self.R_edges_mesh, self.Z_edges_mesh, self.counts_grid,
-                        'nu_data_pure_counts.pdf', colormap = 'magma',
-                        Norm = 'lognorm', vmin=10,
+                        self.R_edges_mesh, self.Z_edges_mesh,
+                        masked_counts,
+                        'nu_data_pure_counts.pdf', colormap = masked_cmap,
+                        Norm = 'lognorm', vmin=100.,
                         cb_label='Star count [stars per bin]')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, gaussianity_pval_counts_grid,
@@ -1187,7 +1207,7 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 10, N_cores=1,num_R_bins=10,num_Z_bins=11,
+    oscar_test = oscar_gaia_data(N_samplings = 50, N_cores=6,num_R_bins=25,num_Z_bins=51,
                                 Rmin = 7000, Rmax = 9000, Zmin= -1500, Zmax=1500,
                                     binning_type='linear')
     oscar_test.plot_histograms()
