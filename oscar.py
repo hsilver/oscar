@@ -205,6 +205,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
                                             statistic='count',
                                             bins=[phi_limits,
                                             R_edges, Z_edges])[0][0]
+    counts_pois_grid = np.sqrt(counts_grid)
 
     #print('Counts done')
     # AVERAGE VELOCITIES
@@ -296,7 +297,8 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
             vbar_R1_dat_grid, vbar_p1_dat_grid, vbar_Z1_dat_grid,
             vbar_RR_dat_grid, vbar_pp_dat_grid, vbar_ZZ_dat_grid,
             vbar_RZ_dat_grid]),\
-            np.array([vbar_R1_std_grid,vbar_p1_std_grid,vbar_Z1_std_grid,
+            np.array([counts_pois_grid,
+            vbar_R1_std_grid,vbar_p1_std_grid,vbar_Z1_std_grid,
             vbar_RR_std_grid,vbar_pp_std_grid,vbar_ZZ_std_grid,
             vbar_RZ_std_grid])
 
@@ -381,7 +383,7 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
     #     width_ratios_vector.append(2)
 
     fig, axes = plt.subplots(ncols=2, nrows=2,
-                gridspec_kw={"height_ratios":[10,1],"width_ratios":[14,25]})
+                gridspec_kw={"height_ratios":[10,1],"width_ratios":[15,50]})
     fig.set_figheight(fig_height)
     fig.set_figwidth(fig_width)
     plt.subplots_adjust(wspace=0.1)
@@ -413,18 +415,12 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
     cb.set_label(label=cb_label)
 
     # Line plot
-    spacing_param = 1
+    spacing_param = 2
     scaling_param = 1.5/np.amax(data_grid)
 
     min_data_and_err = min(0.,np.amin(data_grid), np.amin(data_grid+data_error_lower))
     max_data_and_err = max(0.,np.amax(data_grid), np.amin(data_grid+data_error_upper))
 
-    negative_guidelines = np.arange(0,-min_data_and_err*scaling_param,0.2)
-    positive_guidelines = np.arange(0,max_data_and_err*scaling_param,0.2)
-    # for ng in negative_guidelines:
-    #     line_ax.axvline(-ng,ls='--',alpha=0.2)
-    # for pg in positive_guidelines:
-    #     line_ax.axvline(pg,ls='--',alpha=0.2)
     line_ax.axhline(0, xmin=min_data_and_err*scaling_param,
                         xmax=max_data_and_err*scaling_param,
                         ls='-')
@@ -437,34 +433,26 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
         data_upper = data_error_upper[RR,:]
         data_lower = data_error_lower[RR,:]
 
-        # Interior Guidelines
         line_ax.axvline(zero_point,ls='-')
-        # line_ax.axvline(zero_point+0.2,ls='--',alpha=0.2)
-        # line_ax.axvline(zero_point+0.4,ls='--',alpha=0.2)
-        # line_ax.axvline(zero_point+0.6,ls='--',alpha=0.2)
-        # line_ax.axvline(zero_point+0.8,ls='--',alpha=0.2)
+        #line_ax.set_aspect('equal')
 
-        line_ax.plot(data_values*scaling_param + zero_point, Z_values, ls='-')
+        main_line = line_ax.plot(data_values*scaling_param + zero_point, Z_values, ls='-')
+        line_color = main_line[0].get_color()
         line_ax.plot((data_values+data_upper)*scaling_param + zero_point, Z_values, ls='-',
-                        color = 'grey', alpha=0.5)
+                        color = line_color, alpha=0.5)
         line_ax.plot((data_values-data_lower)*scaling_param + zero_point, Z_values, ls='-',
-                        color = 'grey', alpha=0.5)
+                        color = line_color, alpha=0.5)
         line_ax.fill_betweenx(Z_values,(data_values-data_lower)*scaling_param + zero_point,
                                 (data_values+data_upper)*scaling_param + zero_point,
-                                color='grey', alpha=0.25)
+                                color=line_color, alpha=0.25)
 
-        # line_ax.errorbar(data_values*scaling_param + zero_point, Z_values,
-        #                 xerr = [data_lower*scaling_param, data_upper*scaling_param],
-        #                 fmt='o')
-
-        # line_ax.set_xlim(min_data,max_data)
         line_ax.spines['top'].set_visible(False)
         line_ax.spines['left'].set_visible(False)
         line_ax.spines['bottom'].set_visible(False)
         line_ax.spines['right'].set_visible(False)
         line_ax.xaxis.set_ticks_position('none')
         line_ax.yaxis.set_ticks_position('none')
-        line_ax.set_xticks(range(len(R_data_coords_mesh[:,0])), )
+        line_ax.set_xticks(range(len(R_data_coords_mesh[:,0])))
         line_ax.xaxis.set_ticklabels(R_data_coords_mesh[:,0],
                             rotation='vertical')
         line_ax.xaxis.set_label_coords(0.08, -0.05)
@@ -484,7 +472,6 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
     scale_ax.spines['bottom'].set_visible(False)
     scale_ax.set_ylim([-1,1])
 
-    #if min(0.,np.amin(data_grid)) == 0:
     scale_max = 10**int(round(np.log10(np.amax(abs(data_grid)))))
     scale_ax.plot((0,scale_max*scaling_param), (0,0), ls='-', lw=2)
     scale_ax.scatter(np.array([0,scale_max*scaling_param]), np.array([0,0]), marker='+',s=70)
@@ -492,17 +479,6 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
     scale_ax.set_xticks([0,scale_max*scaling_param])
     scale_ax.xaxis.set_label_coords(0.25, -0.5)
     scale_ax.set_xlabel(cb_label)
-
-    # scale_ax.text(0,0, 'Guidelines are ' + str(0.2/scaling_param) + ' units apart.',
-    #                 fontsize = 16)
-
-    # arrow_size = 1.0 * np.amax(data_grid) # in data units
-    # arrow_start = 0.4 *  len(R_data_coords_mesh[:,0])*spacing_param
-    # scale_ax.arrow(arrow_start,0,arrow_size*scaling_param,0,
-    #                 head_width=0.2, head_length=0.3)
-
-
-
 
     plt.savefig(file_name)
     return
@@ -694,11 +670,11 @@ class oscar_gaia_data:
             cache_dataframe = pd.read_pickle(data_root + '/oscar_cache_files/' + cache_file_name)
 
             self.data_mean = cache_dataframe['data_mean']
-            self.data_sigma2 = cache_dataframe['data_sigma2']
             self.data_cov = cache_dataframe['data_cov']
             self.data_corr = cache_dataframe['data_corr']
+            self.data_std_total = cache_dataframe['data_std_total']
             self.data_mean_grids = cache_dataframe['data_mean_grids']
-            self.sigma_meas_grids = cache_dataframe['sigma_meas_grids']
+            self.data_std_total_grids = cache_dataframe['data_std_total_grids']
             self.skewness_stat_grids = cache_dataframe['skewness_stat_grids']
             self.skewness_pval_grids = cache_dataframe['skewness_pval_grids']
             self.kurtosis_stat_grids = cache_dataframe['kurtosis_stat_grids']
@@ -718,8 +694,15 @@ class oscar_gaia_data:
             self.vbar_pp_dat_grid = cache_dataframe['vbar_pp_dat_grid']
             self.vbar_ZZ_dat_grid = cache_dataframe['vbar_ZZ_dat_grid']
             self.vbar_RZ_dat_grid = cache_dataframe['vbar_RZ_dat_grid']
-
-
+            self.counts_std_grid = cache_dataframe['counts_std_grid']
+            self.nu_std_grid = cache_dataframe['nu_std_grid']
+            self.vbar_R1_std_grid = cache_dataframe['vbar_R1_std_grid']
+            self.vbar_p1_std_grid = cache_dataframe['vbar_p1_std_grid']
+            self.vbar_Z1_std_grid = cache_dataframe['vbar_Z1_std_grid']
+            self.vbar_RR_std_grid = cache_dataframe['vbar_RR_std_grid']
+            self.vbar_pp_std_grid = cache_dataframe['vbar_pp_std_grid']
+            self.vbar_ZZ_std_grid = cache_dataframe['vbar_ZZ_std_grid']
+            self.vbar_RZ_std_grid = cache_dataframe['vbar_RZ_std_grid']
 
         else:
             print('No previous sampling found, running from scratch')
@@ -727,6 +710,7 @@ class oscar_gaia_data:
             if N_cores == 1:
                 #Linear Sample Transform Bin
                 all_binned_data_vectors = []
+                all_binned_std_vectors = []
                 start = time.time()
                 for jj in range(N_samplings):
                     print('Sample ', jj+1, ' of ', N_samplings)
@@ -737,7 +721,9 @@ class oscar_gaia_data:
                                         epoch_T,jj,
                                         self.phi_limits, self.R_edges, self.Z_edges)
                     all_binned_data_vectors.append(binned_data_vector)
+                    all_binned_std_vectors.append(binned_std_vector)
                 all_binned_data_vectors = np.array(all_binned_data_vectors)
+                all_binned_std_vectors = np.array(all_binned_std_vectors)
                 print('\nLinear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
                 print('Time per sample: ', (time.time()-start)/N_samplings, ' s\n')
 
@@ -762,12 +748,18 @@ class oscar_gaia_data:
 
             #Calculate means and covariances, Skewness, Kurtosis
             grid_shape = (8, len(self.R_edges)-1, len(self.Z_edges)-1)
+            subvector_length = (len(self.R_edges)-1)*(len(self.Z_edges)-1)
+
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
+            self.data_median = np.median(all_binned_data_vectors, axis=0)
+
+            self.std_mean = np.mean(all_binned_std_vectors, axis=0)
+            self.std_median = np.median(all_binned_std_vectors, axis=0)
+
+            #Locate NaN points, recommend new sample limits to remove them.
             nan_R_points = np.array([])
             nan_Z_points = np.array([])
-
             if np.isnan(all_binned_data_vectors).any():
-                #Locate NaN points, recommend new sample limits to remove them.
                 for data_vector in all_binned_data_vectors:
                     nan_grid = np.isnan(data_vector).reshape(grid_shape)
                     nan_R_points = np.concatenate([nan_R_points,self.R_data_coords_mesh[nan_grid[1]]])
@@ -786,10 +778,20 @@ class oscar_gaia_data:
 
             covariance_fit = sklcov.EmpiricalCovariance().fit(all_binned_data_vectors)
             self.data_cov = covariance_fit.covariance_
-            self.data_sigma2 = np.diag(self.data_cov)
+            #self.data_var_from_cov = np.diag(self.data_cov)
             data_sigma_inv = 1/np.sqrt(np.diag(self.data_cov))
             data_sigma_inv = data_sigma_inv.reshape(len(data_sigma_inv), 1)
             self.data_corr = np.dot(data_sigma_inv, data_sigma_inv.T) * self.data_cov
+            pdb.set_trace()
+            #Combine the mean sample variances with variances from the covariance fit
+            #   (eg the variance between the means).
+            counts_subvectors = all_binned_data_vectors[:,0:subvector_length]
+            counts_repeated = np.hstack([counts_subvectors]*8)
+            mean_sigma2_vector = np.sum(counts_repeated * (all_binned_std_vectors**2),axis=0)/np.sum(counts_repeated,axis=0)
+            #term_two = np.sum(counts_repeated * (all_binned_data_vectors-self.data_mean)**2, axis=0)/np.sum(counts_repeated,axis=0)
+
+            self.data_std_total = np.sqrt(np.diag(self.data_cov) + mean_sigma2_vector)
+
 
             #Gaussianity test using D’Agostino and Pearson’s tests
             self.skewness_stat, self.skewness_pval = stats.skewtest(all_binned_data_vectors)
@@ -798,7 +800,7 @@ class oscar_gaia_data:
 
             # Reshape
             self.data_mean_grids = self.data_mean.reshape(grid_shape)
-            self.sigma_meas_grids = np.sqrt(self.data_sigma2).reshape(grid_shape)
+            self.data_std_total_grids = self.data_std_total.reshape(grid_shape)
             self.skewness_stat_grids = self.skewness_stat.reshape(grid_shape)
             self.skewness_pval_grids = self.skewness_pval.reshape(grid_shape)
             self.kurtosis_stat_grids = self.kurtosis_stat.reshape(grid_shape)
@@ -812,24 +814,26 @@ class oscar_gaia_data:
             self.vbar_RR_dat_grid, self.vbar_pp_dat_grid, self.vbar_ZZ_dat_grid,\
             self.vbar_RZ_dat_grid = self.data_mean_grids
 
-            # vbar_R1_std_grid, vbar_p1_std_grid, vbar_Z1_std_grid,\
-            # vbar_RR_std_grid, vbar_pp_std_grid, vbar_ZZ_std_grid,\
-            # vbar_RZ_std_grid = self.data_std_grids #FIGURE OUT ERRORS
+            self.counts_std_grid,\
+            self.vbar_R1_std_grid, self.vbar_p1_std_grid, self.vbar_Z1_std_grid,\
+            self.vbar_RR_std_grid, self.vbar_pp_std_grid, self.vbar_ZZ_std_grid,\
+            self.vbar_RZ_std_grid = self.data_std_total_grids #FIGURE OUT ERRORS
 
             # Calculate tracer density
-            sigma_pois_counts_grid = np.sqrt(self.counts_grid)
-            sigma_meas_counts_grid = 0.*sigma_pois_counts_grid #BODGE
-            sigma_total_counts_grid = np.sqrt(sigma_pois_counts_grid**2 + sigma_meas_counts_grid**2)
+            #sigma_pois_counts_grid = np.sqrt(self.counts_grid)
+            #sigma_meas_counts_grid = 0.*sigma_pois_counts_grid #BODGE
+            #sigma_total_counts_grid = np.sqrt(sigma_pois_counts_grid**2 + sigma_meas_counts_grid**2)
             self.nu_dat_grid = self.counts_grid/self.bin_vol_grid
-            self.nu_err_grid = sigma_total_counts_grid/self.bin_vol_grid
+            self.nu_std_grid = self.counts_std_grid/self.bin_vol_grid
+            pdb.set_trace()
 
             # Build dictionary then save to dataframe
             dictionary = {'data_mean' : self.data_mean,
-                            'data_sigma2': self.data_sigma2,
                             'data_cov': self.data_cov,
                             'data_corr' : self.data_corr,
+                            'data_std_total' : self.data_std_total,
                             'data_mean_grids' : self.data_mean_grids,
-                            'sigma_meas_grids' : self.sigma_meas_grids,
+                            'data_std_total_grids': self.data_std_total_grids,
                             'skewness_stat_grids' : self.skewness_stat_grids,
                             'skewness_pval_grids' : self.skewness_pval_grids,
                             'kurtosis_stat_grids' : self.kurtosis_stat_grids,
@@ -849,6 +853,15 @@ class oscar_gaia_data:
                             'vbar_pp_dat_grid' : self.vbar_pp_dat_grid,
                             'vbar_ZZ_dat_grid' : self.vbar_ZZ_dat_grid,
                             'vbar_RZ_dat_grid' : self.vbar_RZ_dat_grid,
+                            'counts_std_grid' : self.counts_std_grid,
+                            'nu_std_grid' : self.nu_std_grid,
+                            'vbar_R1_std_grid' : self.vbar_R1_std_grid,
+                            'vbar_p1_std_grid' : self.vbar_p1_std_grid,
+                            'vbar_Z1_std_grid' : self.vbar_Z1_std_grid,
+                            'vbar_RR_std_grid' : self.vbar_RR_std_grid,
+                            'vbar_pp_std_grid' : self.vbar_pp_std_grid,
+                            'vbar_ZZ_std_grid' : self.vbar_ZZ_std_grid,
+                            'vbar_RZ_std_grid' : self.vbar_RZ_std_grid,
                             }
 
             cache_dataframe = pd.Series(dictionary)
@@ -857,36 +870,11 @@ class oscar_gaia_data:
     def plot_histograms(self):
         # PLOT RESULTS
 
-
-        sigma_meas_counts_grid,\
-        sigma_meas_vbar_R1_dat_grid, sigma_meas_vbar_p1_dat_grid,\
-        sigma_meas_vbar_Z1_dat_grid, sigma_meas_vbar_RR_dat_grid,\
-        sigma_meas_vbar_pp_dat_grid, sigma_meas_vbar_ZZ_dat_grid,\
-        sigma_meas_vbar_RZ_dat_grid = self.sigma_meas_grids
-
-        # sigma_meas_counts_grid,\
-        # sigma_meas_vbar_R1_dat_grid, sigma_meas_vbar_R1_std_grid,\
-        # sigma_meas_vbar_p1_dat_grid, sigma_meas_vbar_p1_std_grid,\
-        # sigma_meas_vbar_Z1_dat_grid, sigma_meas_vbar_Z1_std_grid,\
-        # sigma_meas_vbar_RR_dat_grid, sigma_meas_vbar_RR_std_grid,\
-        # sigma_meas_vbar_pp_dat_grid, sigma_meas_vbar_pp_std_grid,\
-        # sigma_meas_vbar_ZZ_dat_grid, sigma_meas_vbar_ZZ_std_grid,\
-        # sigma_meas_vbar_RZ_dat_grid, sigma_meas_vbar_RZ_std_grid = self.sigma_meas_grids
-
         skewness_stat_counts_grid,\
         skewness_stat_vbar_R1_dat_grid, skewness_stat_vbar_p1_dat_grid,\
         skewness_stat_vbar_Z1_dat_grid, skewness_stat_vbar_RR_dat_grid,\
         skewness_stat_vbar_pp_dat_grid, skewness_stat_vbar_ZZ_dat_grid,\
         skewness_stat_vbar_RZ_dat_grid = self.skewness_stat_grids
-
-        # skewness_stat_counts_grid,\
-        # skewness_stat_vbar_R1_dat_grid, skewness_stat_vbar_R1_std_grid,\
-        # skewness_stat_vbar_p1_dat_grid, skewness_stat_vbar_p1_std_grid,\
-        # skewness_stat_vbar_Z1_dat_grid, skewness_stat_vbar_Z1_std_grid,\
-        # skewness_stat_vbar_RR_dat_grid, skewness_stat_vbar_RR_std_grid,\
-        # skewness_stat_vbar_pp_dat_grid, skewness_stat_vbar_pp_std_grid,\
-        # skewness_stat_vbar_ZZ_dat_grid, skewness_stat_vbar_ZZ_std_grid,\
-        # skewness_stat_vbar_RZ_dat_grid, skewness_stat_vbar_RZ_std_grid = self.skewness_stat_grids
 
         skewness_pval_counts_grid,\
         skewness_pval_vbar_R1_dat_grid, skewness_pval_vbar_p1_dat_grid,\
@@ -894,29 +882,11 @@ class oscar_gaia_data:
         skewness_pval_vbar_pp_dat_grid, skewness_pval_vbar_ZZ_dat_grid,\
         skewness_pval_vbar_RZ_dat_grid = self.skewness_pval_grids
 
-        # skewness_pval_counts_grid,\
-        # skewness_pval_vbar_R1_dat_grid, skewness_pval_vbar_R1_std_grid,\
-        # skewness_pval_vbar_p1_dat_grid, skewness_pval_vbar_p1_std_grid,\
-        # skewness_pval_vbar_Z1_dat_grid, skewness_pval_vbar_Z1_std_grid,\
-        # skewness_pval_vbar_RR_dat_grid, skewness_pval_vbar_RR_std_grid,\
-        # skewness_pval_vbar_pp_dat_grid, skewness_pval_vbar_pp_std_grid,\
-        # skewness_pval_vbar_ZZ_dat_grid, skewness_pval_vbar_ZZ_std_grid,\
-        # skewness_pval_vbar_RZ_dat_grid, skewness_pval_vbar_RZ_std_grid = self.skewness_pval_grids
-
         kurtosis_stat_counts_grid,\
         kurtosis_stat_vbar_R1_dat_grid, kurtosis_stat_vbar_p1_dat_grid,\
         kurtosis_stat_vbar_Z1_dat_grid, kurtosis_stat_vbar_RR_dat_grid,\
         kurtosis_stat_vbar_pp_dat_grid, kurtosis_stat_vbar_ZZ_dat_grid,\
         kurtosis_stat_vbar_RZ_dat_grid = self.kurtosis_stat_grids
-
-        # kurtosis_stat_counts_grid,\
-        # kurtosis_stat_vbar_R1_dat_grid, kurtosis_stat_vbar_R1_std_grid,\
-        # kurtosis_stat_vbar_p1_dat_grid, kurtosis_stat_vbar_p1_std_grid,\
-        # kurtosis_stat_vbar_Z1_dat_grid, kurtosis_stat_vbar_Z1_std_grid,\
-        # kurtosis_stat_vbar_RR_dat_grid, kurtosis_stat_vbar_RR_std_grid,\
-        # kurtosis_stat_vbar_pp_dat_grid, kurtosis_stat_vbar_pp_std_grid,\
-        # kurtosis_stat_vbar_ZZ_dat_grid, kurtosis_stat_vbar_ZZ_std_grid,\
-        # kurtosis_stat_vbar_RZ_dat_grid, kurtosis_stat_vbar_RZ_std_grid = self.kurtosis_stat_grids
 
         kurtosis_pval_counts_grid,\
         kurtosis_pval_vbar_R1_dat_grid, kurtosis_pval_vbar_p1_dat_grid,\
@@ -924,29 +894,11 @@ class oscar_gaia_data:
         kurtosis_pval_vbar_pp_dat_grid, kurtosis_pval_vbar_ZZ_dat_grid,\
         kurtosis_pval_vbar_RZ_dat_grid = self.kurtosis_pval_grids
 
-        # kurtosis_pval_counts_grid,\
-        # kurtosis_pval_vbar_R1_dat_grid, kurtosis_pval_vbar_R1_std_grid,\
-        # kurtosis_pval_vbar_p1_dat_grid, kurtosis_pval_vbar_p1_std_grid,\
-        # kurtosis_pval_vbar_Z1_dat_grid, kurtosis_pval_vbar_Z1_std_grid,\
-        # kurtosis_pval_vbar_RR_dat_grid, kurtosis_pval_vbar_RR_std_grid,\
-        # kurtosis_pval_vbar_pp_dat_grid, kurtosis_pval_vbar_pp_std_grid,\
-        # kurtosis_pval_vbar_ZZ_dat_grid, kurtosis_pval_vbar_ZZ_std_grid,\
-        # kurtosis_pval_vbar_RZ_dat_grid, kurtosis_pval_vbar_RZ_std_grid = self.kurtosis_pval_grids
-
         gaussianity_stat_counts_grid,\
         gaussianity_stat_vbar_R1_dat_grid, gaussianity_stat_vbar_p1_dat_grid,\
         gaussianity_stat_vbar_Z1_dat_grid, gaussianity_stat_vbar_RR_dat_grid,\
         gaussianity_stat_vbar_pp_dat_grid, gaussianity_stat_vbar_ZZ_dat_grid,\
         gaussianity_stat_vbar_RZ_dat_grid = self.gaussianity_stat_grids
-
-        # gaussianity_stat_counts_grid,\
-        # gaussianity_stat_vbar_R1_dat_grid, gaussianity_stat_vbar_R1_std_grid,\
-        # gaussianity_stat_vbar_p1_dat_grid, gaussianity_stat_vbar_p1_std_grid,\
-        # gaussianity_stat_vbar_Z1_dat_grid, gaussianity_stat_vbar_Z1_std_grid,\
-        # gaussianity_stat_vbar_RR_dat_grid, gaussianity_stat_vbar_RR_std_grid,\
-        # gaussianity_stat_vbar_pp_dat_grid, gaussianity_stat_vbar_pp_std_grid,\
-        # gaussianity_stat_vbar_ZZ_dat_grid, gaussianity_stat_vbar_ZZ_std_grid,\
-        # gaussianity_stat_vbar_RZ_dat_grid, gaussianity_stat_vbar_RZ_std_grid = self.gaussianity_stat_grids
 
         gaussianity_pval_counts_grid,\
         gaussianity_pval_vbar_R1_dat_grid, gaussianity_pval_vbar_p1_dat_grid,\
@@ -954,31 +906,16 @@ class oscar_gaia_data:
         gaussianity_pval_vbar_pp_dat_grid, gaussianity_pval_vbar_ZZ_dat_grid,\
         gaussianity_pval_vbar_RZ_dat_grid = self.gaussianity_pval_grids
 
-        # gaussianity_pval_counts_grid,\
-        # gaussianity_pval_vbar_R1_dat_grid, gaussianity_pval_vbar_R1_std_grid,\
-        # gaussianity_pval_vbar_p1_dat_grid, gaussianity_pval_vbar_p1_std_grid,\
-        # gaussianity_pval_vbar_Z1_dat_grid, gaussianity_pval_vbar_Z1_std_grid,\
-        # gaussianity_pval_vbar_RR_dat_grid, gaussianity_pval_vbar_RR_std_grid,\
-        # gaussianity_pval_vbar_pp_dat_grid, gaussianity_pval_vbar_pp_std_grid,\
-        # gaussianity_pval_vbar_ZZ_dat_grid, gaussianity_pval_vbar_ZZ_std_grid,\
-        # gaussianity_pval_vbar_RZ_dat_grid, gaussianity_pval_vbar_RZ_std_grid = self.gaussianity_pval_grids
-
         # TEST LINE AND HEATMAP PLOTTING
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                     self.R_edges_mesh, self.Z_edges_mesh,
-                    self.nu_dat_grid, 0.2*self.nu_dat_grid, 0.4*self.nu_dat_grid,
+                    self.nu_dat_grid, self.nu_std_grid, self.nu_std_grid,
                     'nu_data_line_test.pdf',colormap = 'magma',
                     Norm = 'lognorm', cb_label='Tracer density stars [stars pc$^{-3}$]')
 
-        # plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
-        #             self.R_edges_mesh, self.Z_edges_mesh,
-        #             self.nu_dat_grid, 0.2*self.nu_dat_grid, 0.4*self.nu_dat_grid,
-        #             'nu_data_line_test.pdf',colormap = 'magma',
-        #             Norm = 'lognorm', cb_label='Tracer density stars [stars pc$^{-3}$]')
-
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
-                        self.vbar_RZ_dat_grid, 0.5*self.vbar_RZ_dat_grid,0.5*self.vbar_RZ_dat_grid,
+                        self.vbar_RZ_dat_grid, self.vbar_RZ_std_grid,self.vbar_RZ_std_grid,
                         'vbar_RZ_data_line_test.pdf', colormap = 'seismic',
                         Norm = 'symlognorm',
                         vmin=-np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
@@ -1207,7 +1144,7 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 50, N_cores=6,num_R_bins=25,num_Z_bins=51,
+    oscar_test = oscar_gaia_data(N_samplings = 10, N_cores=1,num_R_bins=20,num_Z_bins=21,
                                 Rmin = 7000, Rmax = 9000, Zmin= -1500, Zmax=1500,
                                     binning_type='linear')
     oscar_test.plot_histograms()
