@@ -218,7 +218,9 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
                                             vRg_vec,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
+
+
     #print('vbar_x1 done')
 
     vbar_p1_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
@@ -230,7 +232,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
                                             vphig_vec,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
     #print('vbar_p1 done')
 
     vbar_Z1_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
@@ -242,7 +244,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
                                             vZg_vec,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
     #print('vbar_z1 done')
 
     #AVERAGE DOUBLE VELOCITIES
@@ -255,7 +257,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
                                             vRg_vec**2,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
     #print('vbar_xx done')
 
     vbar_pp_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
@@ -267,7 +269,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
                                             vphig_vec**2,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
     #print('vbar_pp done')
 
     vbar_ZZ_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
@@ -279,7 +281,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
                                             vZg_vec**2,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
     #print('vbar_zz done')
 
     vbar_RZ_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
@@ -291,7 +293,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
                                             vRg_vec*vZg_vec,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
 
     return np.array([counts_grid,
             vbar_R1_dat_grid, vbar_p1_dat_grid, vbar_Z1_dat_grid,
@@ -433,11 +435,12 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
         data_upper = data_error_upper[RR,:]
         data_lower = data_error_lower[RR,:]
 
-        line_ax.axvline(zero_point,ls='-')
+
         #line_ax.set_aspect('equal')
 
         main_line = line_ax.plot(data_values*scaling_param + zero_point, Z_values, ls='-', linewidth=2)
         line_color = main_line[0].get_color()
+        line_ax.axvline(zero_point,ls='-', color = line_color)
         line_ax.plot((data_values+data_upper)*scaling_param + zero_point, Z_values, ls='-',
                         color = line_color, alpha=0.5, linewidth=1)
         line_ax.plot((data_values-data_lower)*scaling_param + zero_point, Z_values, ls='-',
@@ -911,21 +914,9 @@ class oscar_gaia_data:
         gaussianity_pval_vbar_RZ_dat_grid = self.gaussianity_pval_grids
 
         # TEST LINE AND HEATMAP PLOTTING
-        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
-                    self.R_edges_mesh, self.Z_edges_mesh,
-                    self.nu_dat_grid, self.nu_std_grid, self.nu_std_grid,
-                    'nu_data_line_test.pdf',colormap = 'magma',
-                    Norm = 'lognorm', cb_label='Tracer density stars [stars pc$^{-3}$]')
-        
-        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
-                        self.R_edges_mesh, self.Z_edges_mesh,
-                        self.vbar_RZ_dat_grid, self.vbar_RZ_std_grid,self.vbar_RZ_std_grid,
-                        'vbar_RZ_data_line_test.pdf', colormap = 'seismic',
-                        Norm = 'symlognorm',
-                        vmin=-np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
-                        vmax=np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
-                        linthresh = 200, linscale = 1.0,
-                        cb_label='RZ velocity cross term $\overline{v_R v_Z}$ [km$^{2}$ s$^{-2}$]')
+
+
+
 
         # TRACER DENSITY
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
@@ -958,6 +949,12 @@ class oscar_gaia_data:
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = 'Tracer density kurtosis z-score')
 
+        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
+                    self.R_edges_mesh, self.Z_edges_mesh,
+                    self.nu_dat_grid, self.nu_std_grid, self.nu_std_grid,
+                    'nu_data_w_line.pdf',colormap = 'magma',
+                    Norm = 'lognorm', cb_label='Tracer density stars [stars pc$^{-3}$]')
+
 
 
 
@@ -985,6 +982,16 @@ class oscar_gaia_data:
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_Z}$  kurtosis z-score')
 
+
+        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
+                        self.R_edges_mesh, self.Z_edges_mesh,
+                        self.vbar_Z1_dat_grid, self.vbar_Z1_std_grid,self.vbar_Z1_std_grid,
+                        'vbar_Z1_data_w_line.pdf', colormap = 'seismic',
+                        Norm = 'linear',
+                        vmin=-np.amax(abs(self.vbar_Z1_dat_grid[~np.isnan(self.vbar_Z1_dat_grid)])),
+                        vmax=np.amax(abs(self.vbar_Z1_dat_grid[~np.isnan(self.vbar_Z1_dat_grid)])),
+                        cb_label='Vertical velocity $\overline{v_Z}$ [km s$^{-1}$]')
+
         #Vertical Velocity vZZ
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.vbar_ZZ_dat_grid,
@@ -1005,9 +1012,18 @@ class oscar_gaia_data:
                         cb_label = '$\overline{v_Z v_Z}$  skewness z-score')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, kurtosis_stat_vbar_ZZ_dat_grid,
-                        'vbar_Z1_kurt_stat.pdf', colormap = 'magma',
+                        'vbar_ZZ_kurt_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_Z v_Z}$  kurtosis z-score')
+
+        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
+                        self.R_edges_mesh, self.Z_edges_mesh,
+                        self.vbar_ZZ_dat_grid, self.vbar_ZZ_std_grid,self.vbar_ZZ_std_grid,
+                        'vbar_ZZ_data_w_line.pdf', colormap = 'nipy_spectral',
+                        Norm = 'linear',
+                        vmin=np.amin(self.vbar_ZZ_dat_grid[~np.isnan(self.vbar_ZZ_dat_grid)]),
+                        vmax=4000,
+                        cb_label='Vertical velocity $\overline{v_Z v_Z}$ [km$^{2}$ s$^{-2}$]')
 
         #Radial Velocity vR
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
@@ -1033,11 +1049,21 @@ class oscar_gaia_data:
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_R}$  kurtosis z-score')
 
+        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
+                        self.R_edges_mesh, self.Z_edges_mesh,
+                        self.vbar_R1_dat_grid, self.vbar_R1_std_grid,self.vbar_R1_std_grid,
+                        'vbar_R1_data_w_line.pdf', colormap = 'magma',
+                        Norm = 'linear',
+                        vmin=np.amin(self.vbar_R1_dat_grid[~np.isnan(self.vbar_R1_dat_grid)]),
+                        vmax=np.amax(self.vbar_R1_dat_grid[~np.isnan(self.vbar_R1_dat_grid)]),
+                        cb_label='Radial velocity $\overline{v_R}$ [km s$^{-1}$]')
+
         #Radial Velocity vRR
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.vbar_RR_dat_grid,
                         'vbar_RR_data.pdf', colormap = 'nipy_spectral',
-                        Norm = 'linear', vmin=np.amin(self.vbar_RR_dat_grid[~np.isnan(self.vbar_RR_dat_grid)]),
+                        Norm = 'linear',
+                        vmin=np.amin(self.vbar_RR_dat_grid[~np.isnan(self.vbar_RR_dat_grid)]),
                         vmax=np.amax(self.vbar_RR_dat_grid[~np.isnan(self.vbar_RR_dat_grid)]),
                         cb_label='Radial velocity $\overline{v_R v_R}$ [km$^{2}$ s$^{-2}$]')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
@@ -1056,11 +1082,21 @@ class oscar_gaia_data:
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_R v_R}$  kurtosis z-score')
 
+        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
+                        self.R_edges_mesh, self.Z_edges_mesh,
+                        self.vbar_RR_dat_grid, self.vbar_RR_std_grid,self.vbar_RR_std_grid,
+                        'vbar_RR_data_w_line.pdf', colormap = 'nipy_spectral',
+                        Norm = 'linear',
+                        vmin=np.amin(self.vbar_RR_dat_grid[~np.isnan(self.vbar_RR_dat_grid)]),
+                        vmax=np.amax(self.vbar_RR_dat_grid[~np.isnan(self.vbar_RR_dat_grid)]),
+                        cb_label='Radial velocity $\overline{v_R v_R}$ [km$^{2}$ s$^{-2}$]')
+
         #Tangential Velocity vp
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.vbar_p1_dat_grid,
                         'vbar_p1_data.pdf', colormap = 'magma',
-                        Norm = 'linear', vmin=np.amin(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
+                        Norm = 'linear',
+                        vmin=np.amin(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
                         vmax=np.amax(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
                         cb_label='Angular Velocity $\overline{v_\phi}$ [rad s$^{-1}$]')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
@@ -1083,6 +1119,26 @@ class oscar_gaia_data:
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_p1_dat_grid*self.R_data_coords_mesh*3.086E1, #picorad/s *
                         'vbar_T1_data.pdf', colormap = 'nipy_spectral',
+                        Norm = 'linear',
+                        vmin=None,#np.amin(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
+                        vmax=None,#np.amax(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
+                        cb_label='Tangential velocity $\overline{v_p}$ [km s$^{-1}$]')
+
+        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
+                        self.R_edges_mesh, self.Z_edges_mesh,
+                        self.vbar_p1_dat_grid, self.vbar_p1_std_grid,self.vbar_p1_std_grid,
+                        'vbar_p1_data_w_line.pdf', colormap = 'magma',
+                        Norm = 'linear',
+                        vmin=np.amin(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
+                        vmax=np.amax(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
+                        cb_label='Angular Velocity $\overline{v_\phi}$ [rad s$^{-1}$]')
+
+        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
+                        self.R_edges_mesh, self.Z_edges_mesh,
+                        self.vbar_p1_dat_grid*self.R_data_coords_mesh*3.086E1,
+                        self.vbar_p1_std_grid*self.R_data_coords_mesh*3.086E1,
+                        self.vbar_p1_std_grid*self.R_data_coords_mesh*3.086E1,
+                        'vbar_T1_data_w_line.pdf', colormap = 'nipy_spectral',
                         Norm = 'linear',
                         vmin=None,#np.amin(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
                         vmax=None,#np.amax(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
@@ -1113,6 +1169,16 @@ class oscar_gaia_data:
                         'vbar_RZ_kurt_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_R v_Z}$  kurtosis z-score')
+
+        plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
+                        self.R_edges_mesh, self.Z_edges_mesh,
+                        self.vbar_RZ_dat_grid, self.vbar_RZ_std_grid,self.vbar_RZ_std_grid,
+                        'vbar_RZ_data_w_line.pdf', colormap = 'seismic',
+                        Norm = 'symlognorm',
+                        vmin=-np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
+                        vmax=np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
+                        linthresh = 200, linscale = 1.0,
+                        cb_label='RZ velocity cross term $\overline{v_R v_Z}$ [km$^{2}$ s$^{-2}$]')
 
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
@@ -1148,8 +1214,8 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 10, N_cores=1,num_R_bins=10,num_Z_bins=21,
+    oscar_test = oscar_gaia_data(N_samplings = 15, N_cores=1,num_R_bins=10,num_Z_bins=21,
                                 Rmin = 7000, Rmax = 9000, Zmin= -1500, Zmax=1500,
-                                    binning_type='quartile')
+                                    binning_type='linear')
     oscar_test.plot_histograms()
     #oscar_test.plot_correlation_matrix()
