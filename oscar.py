@@ -674,6 +674,8 @@ class oscar_gaia_data:
             self.data_corr = cache_dataframe['data_corr']
             self.data_std_total = cache_dataframe['data_std_total']
             self.data_mean_grids = cache_dataframe['data_mean_grids']
+            self.data_var_from_cov = cache_dataframe['data_var_from_cov']
+            self.data_var_avg_from_samples = cache_dataframe['data_var_avg_from_samples']
             self.data_std_total_grids = cache_dataframe['data_std_total_grids']
             self.skewness_stat_grids = cache_dataframe['skewness_stat_grids']
             self.skewness_pval_grids = cache_dataframe['skewness_pval_grids']
@@ -778,7 +780,7 @@ class oscar_gaia_data:
 
             covariance_fit = sklcov.EmpiricalCovariance().fit(all_binned_data_vectors)
             self.data_cov = covariance_fit.covariance_
-            #self.data_var_from_cov = np.diag(self.data_cov)
+            self.data_var_from_cov = np.diag(self.data_cov)
             data_sigma_inv = 1/np.sqrt(np.diag(self.data_cov))
             data_sigma_inv = data_sigma_inv.reshape(len(data_sigma_inv), 1)
             self.data_corr = np.dot(data_sigma_inv, data_sigma_inv.T) * self.data_cov
@@ -787,10 +789,10 @@ class oscar_gaia_data:
             #   (eg the variance between the means).
             counts_subvectors = all_binned_data_vectors[:,0:subvector_length]
             counts_repeated = np.hstack([counts_subvectors]*8)
-            mean_sigma2_vector = np.sum(counts_repeated * (all_binned_std_vectors**2),axis=0)/np.sum(counts_repeated,axis=0)
+            self.data_var_avg_from_samples = np.sum(counts_repeated * (all_binned_std_vectors**2),axis=0)/np.sum(counts_repeated,axis=0)
             #term_two = np.sum(counts_repeated * (all_binned_data_vectors-self.data_mean)**2, axis=0)/np.sum(counts_repeated,axis=0)
 
-            self.data_std_total = np.sqrt(np.diag(self.data_cov) + mean_sigma2_vector)
+            self.data_std_total = np.sqrt(self.data_var_from_cov + self.data_var_avg_from_samples)
 
 
             #Gaussianity test using D’Agostino and Pearson’s tests
@@ -831,6 +833,8 @@ class oscar_gaia_data:
             dictionary = {'data_mean' : self.data_mean,
                             'data_cov': self.data_cov,
                             'data_corr' : self.data_corr,
+                            'data_var_from_cov' : self.data_var_from_cov,
+                            'data_var_avg_from_samples' : self.data_var_avg_from_samples,
                             'data_std_total' : self.data_std_total,
                             'data_mean_grids' : self.data_mean_grids,
                             'data_std_total_grids': self.data_std_total_grids,
@@ -912,7 +916,7 @@ class oscar_gaia_data:
                     self.nu_dat_grid, self.nu_std_grid, self.nu_std_grid,
                     'nu_data_line_test.pdf',colormap = 'magma',
                     Norm = 'lognorm', cb_label='Tracer density stars [stars pc$^{-3}$]')
-
+        
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_RZ_dat_grid, self.vbar_RZ_std_grid,self.vbar_RZ_std_grid,
@@ -1144,8 +1148,8 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 25, N_cores=1,num_R_bins=20,num_Z_bins=21,
+    oscar_test = oscar_gaia_data(N_samplings = 10, N_cores=1,num_R_bins=10,num_Z_bins=21,
                                 Rmin = 7000, Rmax = 9000, Zmin= -1500, Zmax=1500,
-                                    binning_type='linear')
+                                    binning_type='quartile')
     oscar_test.plot_histograms()
     #oscar_test.plot_correlation_matrix()
