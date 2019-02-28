@@ -415,7 +415,7 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
     cb.set_label(label=cb_label)
 
     # Line plot
-    spacing_param = 2
+    spacing_param = 1
     scaling_param = 1.5/np.amax(data_grid)
 
     min_data_and_err = min(0.,np.amin(data_grid), np.amin(data_grid+data_error_lower))
@@ -436,15 +436,15 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
         line_ax.axvline(zero_point,ls='-')
         #line_ax.set_aspect('equal')
 
-        main_line = line_ax.plot(data_values*scaling_param + zero_point, Z_values, ls='-')
+        main_line = line_ax.plot(data_values*scaling_param + zero_point, Z_values, ls='-', linewidth=2)
         line_color = main_line[0].get_color()
         line_ax.plot((data_values+data_upper)*scaling_param + zero_point, Z_values, ls='-',
-                        color = line_color, alpha=0.5)
+                        color = line_color, alpha=0.5, linewidth=1)
         line_ax.plot((data_values-data_lower)*scaling_param + zero_point, Z_values, ls='-',
-                        color = line_color, alpha=0.5)
+                        color = line_color, alpha=0.5, linewidth=1)
         line_ax.fill_betweenx(Z_values,(data_values-data_lower)*scaling_param + zero_point,
                                 (data_values+data_upper)*scaling_param + zero_point,
-                                color=line_color, alpha=0.25)
+                                color=line_color, alpha=0.1)
 
         line_ax.spines['top'].set_visible(False)
         line_ax.spines['left'].set_visible(False)
@@ -782,7 +782,7 @@ class oscar_gaia_data:
             data_sigma_inv = 1/np.sqrt(np.diag(self.data_cov))
             data_sigma_inv = data_sigma_inv.reshape(len(data_sigma_inv), 1)
             self.data_corr = np.dot(data_sigma_inv, data_sigma_inv.T) * self.data_cov
-            pdb.set_trace()
+
             #Combine the mean sample variances with variances from the covariance fit
             #   (eg the variance between the means).
             counts_subvectors = all_binned_data_vectors[:,0:subvector_length]
@@ -825,7 +825,7 @@ class oscar_gaia_data:
             #sigma_total_counts_grid = np.sqrt(sigma_pois_counts_grid**2 + sigma_meas_counts_grid**2)
             self.nu_dat_grid = self.counts_grid/self.bin_vol_grid
             self.nu_std_grid = self.counts_std_grid/self.bin_vol_grid
-            pdb.set_trace()
+
 
             # Build dictionary then save to dataframe
             dictionary = {'data_mean' : self.data_mean,
@@ -1144,7 +1144,7 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 10, N_cores=1,num_R_bins=20,num_Z_bins=21,
+    oscar_test = oscar_gaia_data(N_samplings = 25, N_cores=1,num_R_bins=20,num_Z_bins=21,
                                 Rmin = 7000, Rmax = 9000, Zmin= -1500, Zmax=1500,
                                     binning_type='linear')
     oscar_test.plot_histograms()
