@@ -159,6 +159,7 @@ def astrometric_to_galactocentric(ra, dec, para, pm_ra, pm_dec, vr, Rsun, phisun
                     [d_vec * pm_bb_vec * pc2km, d_vec * pm_bb_vec * pc2km, d_vec * pm_bb_vec * pc2km]])
 
     vXh_vec, vYh_vec, vZh_vec = (Rmat.T * invr_mat.T).sum(-1).T
+    # vXh towards the sun, vYh towards direction of rotation, vZh upwards
 
     if print_out:
         print('Velocities xyz Heliocentric')
@@ -168,9 +169,8 @@ def astrometric_to_galactocentric(ra, dec, para, pm_ra, pm_dec, vr, Rsun, phisun
         print('')
 
     #vxvyvz_to_galcencyl
-
     vXg_vec, vYg_vec, vZg_vec = np.dot(h2g_rot_mat,np.array([-vXh_vec, vYh_vec,np.sign(Rsun) * vZh_vec]))\
-                                + np.array([vRsun,vYsun,vZsun]).reshape(3,1)
+                                + np.array([-vRsun,vYsun,vZsun]).reshape(3,1)
 
     if print_out:
         print('vXg_vec: ', vXg_vec)
@@ -209,91 +209,95 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, phi_limits, R_e
 
     #print('Counts done')
     # AVERAGE VELOCITIES
-    vbar_R1_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+    vbar_R1_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vRg_vec,
                                             statistic='mean',
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
-    vbar_R1_std_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+                                            R_edges, Z_edges])[0][0])
+    vbar_R1_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vRg_vec,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
-
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid))
+    vbar_R1_dat_grid_median = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+                                            vRg_vec,
+                                            statistic='median',
+                                            bins=[phi_limits,
+                                            R_edges, Z_edges])[0][0])
 
     #print('vbar_x1 done')
 
-    vbar_p1_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+    vbar_p1_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vphig_vec,
                                             statistic='mean',
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
-    vbar_p1_std_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+                                            R_edges, Z_edges])[0][0])
+    vbar_p1_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vphig_vec,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid))
     #print('vbar_p1 done')
 
-    vbar_Z1_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+    vbar_Z1_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vZg_vec,
                                             statistic='mean',
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
-    vbar_Z1_std_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+                                            R_edges, Z_edges])[0][0])
+    vbar_Z1_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vZg_vec,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid))
     #print('vbar_z1 done')
 
     #AVERAGE DOUBLE VELOCITIES
-    vbar_RR_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+    vbar_RR_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vRg_vec**2,
                                             statistic='mean',
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
-    vbar_RR_std_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+                                            R_edges, Z_edges])[0][0])
+    vbar_RR_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vRg_vec**2,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid))
     #print('vbar_xx done')
 
-    vbar_pp_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+    vbar_pp_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vphig_vec**2,
                                             statistic='mean',
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
-    vbar_pp_std_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+                                            R_edges, Z_edges])[0][0])
+    vbar_pp_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vphig_vec**2,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid))
     #print('vbar_pp done')
 
-    vbar_ZZ_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+    vbar_ZZ_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vZg_vec**2,
                                             statistic='mean',
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
-    vbar_ZZ_std_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+                                            R_edges, Z_edges])[0][0])
+    vbar_ZZ_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vZg_vec**2,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid))
     #print('vbar_zz done')
 
-    vbar_RZ_dat_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+    vbar_RZ_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vRg_vec*vZg_vec,
                                             statistic='mean',
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]
-    vbar_RZ_std_grid = stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
+                                            R_edges, Z_edges])[0][0])
+    vbar_RZ_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([phig_vec,Rg_vec,Zg_vec],
                                             vRg_vec*vZg_vec,
                                             statistic=np.std,
                                             bins=[phi_limits,
-                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid)
+                                            R_edges, Z_edges])[0][0]/np.sqrt(counts_grid))
 
     return np.array([counts_grid,
             vbar_R1_dat_grid, vbar_p1_dat_grid, vbar_Z1_dat_grid,
@@ -344,24 +348,28 @@ def plot_RZ_heatmap(R_data_coords_mesh, Z_data_coords_mesh,
                     Norm = 'linear', vmin=None, vmax=None,
                     linthresh = None, linscale = None,
                     ylabel = 'Z [pc]', xlabel = 'R [pc]',
-                    cb_label = ' '):
+                    cb_label = ' ', counts_mask = True):
     fig, axes = plt.subplots(ncols=2, nrows=1, gridspec_kw={"width_ratios":[15,1]})
     fig.set_figheight(fig_height)
     fig.set_figwidth(fig_width)
     #plt.subplots_adjust(wspace=wspace_double_cbax)
     ax = axes[0] #Plot
     cbax = axes[1] #Colorbar
+    ax.set_aspect('equal')
+
+    data_grid_masked = np.ma.masked_where(np.logical_not(counts_mask), data_grid)
+
     if Norm == 'lognorm':
-        im = ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid,
+        im = ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid_masked,
                         cmap = colormap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
     elif Norm == 'symlognorm':
-        im = ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid,
+        im = ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid_masked,
                         cmap = colormap,
                         norm=colors.SymLogNorm(vmin=vmin, vmax=vmax,
                                                 linthresh=linthresh,
                                                 linscale=linscale))
     elif Norm== 'linear':
-        im = ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid,
+        im = ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid_masked,
                         cmap = colormap, vmin=vmin, vmax=vmax)
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
@@ -377,7 +385,7 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
                     Norm = 'linear', vmin=None, vmax=None,
                     linthresh = None, linscale = None,
                     ylabel = 'Z [pc]', xlabel = 'R [pc]',
-                    cb_label = ' '):
+                    cb_label = ' ', counts_mask=True):
 
     num_R_bins = len(R_data_coords_mesh[:,0])
     # width_ratios_vector = [14,1]
@@ -396,18 +404,22 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
     scale_ax.get_shared_x_axes().join(line_ax, scale_ax)
     line_ax.get_shared_y_axes().join(line_ax, heat_ax)
 
+    data_grid_masked = np.ma.masked_where(np.logical_not(counts_mask), data_grid)
+    data_error_upper_masked = np.ma.masked_where(np.logical_not(counts_mask), data_error_upper)
+    data_error_lower_masked = np.ma.masked_where(np.logical_not(counts_mask), data_error_lower)
+
     # Heat Map
     if Norm == 'lognorm':
-        im = heat_ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid,
+        im = heat_ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid_masked,
                         cmap = colormap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
     elif Norm == 'symlognorm':
-        im = heat_ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid,
+        im = heat_ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid_masked,
                         cmap = colormap,
                         norm=colors.SymLogNorm(vmin=vmin, vmax=vmax,
                                                 linthresh=linthresh,
                                                 linscale=linscale))
     elif Norm== 'linear':
-        im = heat_ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid,
+        im = heat_ax.pcolormesh(R_edges_mesh, Z_edges_mesh, data_grid_masked,
                         cmap = colormap, vmin=vmin, vmax=vmax)
     heat_ax.set_ylabel(ylabel)
     heat_ax.set_xlabel(xlabel)
@@ -418,10 +430,10 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
 
     # Line plot
     spacing_param = 1
-    scaling_param = 1.5/np.amax(data_grid)
+    scaling_param = 1.5/np.nanmax(data_grid_masked)
 
-    min_data_and_err = min(0.,np.amin(data_grid), np.amin(data_grid+data_error_lower))
-    max_data_and_err = max(0.,np.amax(data_grid), np.amin(data_grid+data_error_upper))
+    min_data_and_err = min(0.,np.nanmin(data_grid_masked), np.nanmin(data_grid_masked+data_error_lower_masked))
+    max_data_and_err = max(0.,np.nanmax(data_grid_masked), np.nanmin(data_grid_masked+data_error_upper_masked))
 
     line_ax.axhline(0, xmin=min_data_and_err*scaling_param,
                         xmax=max_data_and_err*scaling_param,
@@ -431,13 +443,12 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
         zero_point = RR * spacing_param
 
         Z_values = Z_data_coords_mesh[RR,:]
-        data_values = data_grid[RR,:]
-        data_upper = data_error_upper[RR,:]
-        data_lower = data_error_lower[RR,:]
+        data_values = data_grid_masked[RR,:]
+        data_upper = data_error_upper_masked[RR,:]
+        data_lower = data_error_lower_masked[RR,:]
 
 
         #line_ax.set_aspect('equal')
-
         main_line = line_ax.plot(data_values*scaling_param + zero_point, Z_values, ls='-', linewidth=2)
         line_color = main_line[0].get_color()
         line_ax.axvline(zero_point,ls='-', color = line_color)
@@ -475,7 +486,7 @@ def plot_RZ_heatmap_and_lines(R_data_coords_mesh, Z_data_coords_mesh,
     scale_ax.spines['bottom'].set_visible(False)
     scale_ax.set_ylim([-1,1])
 
-    scale_max = 10**int(round(np.log10(np.amax(abs(data_grid)))))
+    scale_max = 10**int(round(np.log10(np.nanmax(data_grid_masked))))
     scale_ax.plot((0,scale_max*scaling_param), (0,0), ls='-', lw=2)
     scale_ax.scatter(np.array([0,scale_max*scaling_param]), np.array([0,0]), marker='+',s=70)
     scale_ax.xaxis.set_ticklabels([0,scale_max])
@@ -535,6 +546,7 @@ class oscar_gaia_data:
                         phi_limits = [-np.pi/8,np.pi/8],
                         N_samplings = 100,
                         N_cores = 1,
+                        calculate_covariance = True
                         ):
         self.data_root = data_root
         self.data_file_name = data_file_name
@@ -764,35 +776,41 @@ class oscar_gaia_data:
             #Locate NaN points, recommend new sample limits to remove them.
             nan_R_points = np.array([])
             nan_Z_points = np.array([])
-            if np.isnan(all_binned_data_vectors).any():
-                for data_vector in all_binned_data_vectors:
-                    nan_grid = np.isnan(data_vector).reshape(grid_shape)
-                    nan_R_points = np.concatenate([nan_R_points,self.R_data_coords_mesh[nan_grid[1]]])
-                    nan_Z_points = np.concatenate([nan_Z_points,self.Z_data_coords_mesh[nan_grid[1]]])
-                nan_R_points = np.unique(nan_R_points)
-                nan_Z_points = np.unique(nan_Z_points)
-                min_R = max(nan_R_points[nan_R_points < self.R_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
-                max_R = min(nan_R_points[nan_R_points > self.R_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
-                min_Z = max(nan_Z_points[nan_Z_points < self.Z_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
-                max_Z = min(nan_Z_points[nan_Z_points > self.Z_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
-                print('Data Vectors contain NaN due to zero star counts,likely due to zero star counts in some bins.')
-                print('The maximum NaN free box is:')
-                print('Rmin, Rmax = ', min_R, max_R)
-                print('Zmin, Zmax = ', min_Z, max_Z)
-                raise Exception('Data vectors contain NaN.')
+            # if np.isnan(all_binned_data_vectors).any():
+            #     for data_vector in all_binned_data_vectors:
+            #         nan_grid = np.isnan(data_vector).reshape(grid_shape)
+            #         nan_R_points = np.concatenate([nan_R_points,self.R_data_coords_mesh[nan_grid[1]]])
+            #         nan_Z_points = np.concatenate([nan_Z_points,self.Z_data_coords_mesh[nan_grid[1]]])
+            #     nan_R_points = np.unique(nan_R_points)
+            #     nan_Z_points = np.unique(nan_Z_points)
+            #     min_R = max(nan_R_points[nan_R_points < self.R_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
+            #     max_R = min(nan_R_points[nan_R_points > self.R_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
+            #     min_Z = max(nan_Z_points[nan_Z_points < self.Z_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
+            #     max_Z = min(nan_Z_points[nan_Z_points > self.Z_data_coords_mesh[int(self.num_R_bins/2), int(self.num_Z_bins/2)]])
+            #     print('Data Vectors contain NaN due to zero star counts,likely due to zero star counts in some bins.')
+            #     print('The maximum NaN free box is:')
+            #     print('Rmin, Rmax = ', min_R, max_R)
+            #     print('Zmin, Zmax = ', min_Z, max_Z)
+            #     #raise Exception('Data vectors contain NaN.')
 
-            covariance_fit = sklcov.EmpiricalCovariance().fit(all_binned_data_vectors)
-            self.data_cov = covariance_fit.covariance_
-            self.data_var_from_cov = np.diag(self.data_cov)
-            data_sigma_inv = 1/np.sqrt(np.diag(self.data_cov))
-            data_sigma_inv = data_sigma_inv.reshape(len(data_sigma_inv), 1)
-            self.data_corr = np.dot(data_sigma_inv, data_sigma_inv.T) * self.data_cov
+            if calculate_covariance:
+                covariance_fit = sklcov.EmpiricalCovariance().fit(all_binned_data_vectors)
+                self.data_cov = covariance_fit.covariance_
+                self.data_var_from_cov = np.diag(self.data_cov)
+                data_sigma_inv = 1/np.sqrt(np.diag(self.data_cov))
+                data_sigma_inv = data_sigma_inv.reshape(len(data_sigma_inv), 1)
+                self.data_corr = np.dot(data_sigma_inv, data_sigma_inv.T) * self.data_cov
+            else:
+                self.data_cov = np.zeros(1)
+                self.data_var_from_cov = np.var(all_binned_data_vectors, axis=0)
+                self.data_corr = np.zeros(1)
 
             #Combine the mean sample variances with variances from the covariance fit
             #   (eg the variance between the means).
             counts_subvectors = all_binned_data_vectors[:,0:subvector_length]
             counts_repeated = np.hstack([counts_subvectors]*8)
-            self.data_var_avg_from_samples = np.sum(counts_repeated * (all_binned_std_vectors**2),axis=0)/np.sum(counts_repeated,axis=0)
+
+            self.data_var_avg_from_samples = np.sum(counts_repeated * (np.nan_to_num(all_binned_std_vectors)**2),axis=0)/np.sum(counts_repeated,axis=0)
             #term_two = np.sum(counts_repeated * (all_binned_data_vectors-self.data_mean)**2, axis=0)/np.sum(counts_repeated,axis=0)
 
             self.data_std_total = np.sqrt(self.data_var_from_cov + self.data_var_avg_from_samples)
@@ -874,7 +892,18 @@ class oscar_gaia_data:
             cache_dataframe = pd.Series(dictionary)
             cache_dataframe.to_pickle(data_root + '/oscar_cache_files/' + cache_file_name)
 
-    def plot_histograms(self):
+    def plot_histograms(self, counts_threshold = 50):
+        #Set up file structure
+        plot_folder = self.data_root + self.data_file_name.split('.')[0] + \
+                        '/samplings_' + str(self.N_samplings) + \
+                        '_Rlim_' + str(self.Rmin) + '_' + str(self.Rmax) + \
+                        '_Zlim_' + str(self.Zmin) + '_' + str(self.Zmax) + \
+                        '_Rbins_' + str(self.num_R_bins) + \
+                        '_Zbins_' + str(self.num_Z_bins) + \
+                        self.binning_type + '/'
+        if not os.path.isdir(plot_folder):
+            os.makedirs(plot_folder)
+        pdb.set_trace()
         # PLOT RESULTS
 
         skewness_stat_counts_grid,\
@@ -921,64 +950,70 @@ class oscar_gaia_data:
         # TRACER DENSITY
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.nu_dat_grid,
-                        'nu_data.pdf', colormap = 'magma',
+                        plot_folder + 'nu_data.pdf', colormap = 'magma',
                         Norm = 'lognorm', cb_label='Tracer density stars [stars pc$^{-3}$]')
 
         masked_cmap = plt.cm.viridis
         masked_cmap.set_bad(color='grey')
-        masked_counts = np.ma.masked_where(self.counts_grid < 100, self.counts_grid)
+        masked_counts = np.ma.masked_where(self.counts_grid < counts_threshold, self.counts_grid)
+        counts_above_threshold = self.counts_grid >= counts_threshold
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         masked_counts,
-                        'nu_data_pure_counts.pdf', colormap = masked_cmap,
-                        Norm = 'lognorm', vmin=100.,
-                        cb_label='Star count [stars per bin]')
+                        plot_folder + 'nu_data_pure_counts.pdf', colormap = masked_cmap,
+                        Norm = 'lognorm', vmin=50.,
+                        cb_label='Star count [stars per bin]',
+                        counts_mask = True)
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, gaussianity_pval_counts_grid,
-                        'nu_gauss_pval.pdf', colormap = 'magma',
+                        plot_folder + 'nu_gauss_pval.pdf', colormap = 'magma',
                         Norm = 'lognorm', vmin=1e-2, vmax=1.,
                         cb_label='Tracer density gaussianity p-value')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, skewness_stat_counts_grid,
-                        'nu_skew_stat.pdf', colormap = 'magma',
+                        plot_folder + 'nu_skew_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = 'Tracer density Skewness z-score')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, kurtosis_stat_counts_grid,
-                        'nu_kurt_stat.pdf', colormap = 'magma',
+                        plot_folder + 'nu_kurt_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = 'Tracer density kurtosis z-score')
 
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                     self.R_edges_mesh, self.Z_edges_mesh,
                     self.nu_dat_grid, self.nu_std_grid, self.nu_std_grid,
-                    'nu_data_w_line.pdf',colormap = 'magma',
+                    plot_folder + 'nu_data_w_line.pdf',colormap = 'magma',
                     Norm = 'lognorm', cb_label='Tracer density stars [stars pc$^{-3}$]')
 
 
 
 
         #Vertical Velocity vZ1
+        # self.vbar_Z1_dat_grid = np.ma.masked_where(np.isnan(self.vbar_Z1_dat_grid),
+        #                             self.vbar_Z1_dat_grid)
+
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.vbar_Z1_dat_grid,
-                        'vbar_Z1_data.pdf', colormap = 'seismic',
+                        plot_folder + 'vbar_Z1_data.pdf', colormap = 'seismic',
                         Norm = 'linear',
-                        vmin=-np.amax(abs(self.vbar_Z1_dat_grid[~np.isnan(self.vbar_Z1_dat_grid)])),
-                        vmax=np.amax(abs(self.vbar_Z1_dat_grid[~np.isnan(self.vbar_Z1_dat_grid)])),
-                        cb_label='Vertical velocity $\overline{v_Z}$ [km s$^{-1}$]')
+                        vmin=-np.nanmax(abs(self.vbar_Z1_dat_grid[counts_above_threshold])),
+                        vmax=np.nanmax(abs(self.vbar_Z1_dat_grid[counts_above_threshold])),
+                        cb_label='Vertical velocity $\overline{v_Z}$ [km s$^{-1}$]',
+                        counts_mask = counts_above_threshold)
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, gaussianity_pval_vbar_Z1_dat_grid,
-                        'vbar_Z1_gauss_pval.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_Z1_gauss_pval.pdf', colormap = 'magma',
                         Norm = 'lognorm', vmin=1e-2, vmax=1.,
                         cb_label='$\overline{v_Z}$  gaussianity p-value')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, skewness_stat_vbar_Z1_dat_grid,
-                        'vbar_Z1_skew_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_Z1_skew_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_Z}$  Skewness z-score')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, kurtosis_stat_vbar_Z1_dat_grid,
-                        'vbar_Z1_kurt_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_Z1_kurt_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_Z}$  kurtosis z-score')
 
@@ -986,209 +1021,224 @@ class oscar_gaia_data:
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_Z1_dat_grid, self.vbar_Z1_std_grid,self.vbar_Z1_std_grid,
-                        'vbar_Z1_data_w_line.pdf', colormap = 'seismic',
+                        plot_folder + 'vbar_Z1_data_w_line.pdf', colormap = 'seismic',
                         Norm = 'linear',
-                        vmin=-np.amax(abs(self.vbar_Z1_dat_grid[~np.isnan(self.vbar_Z1_dat_grid)])),
-                        vmax=np.amax(abs(self.vbar_Z1_dat_grid[~np.isnan(self.vbar_Z1_dat_grid)])),
-                        cb_label='Vertical velocity $\overline{v_Z}$ [km s$^{-1}$]')
+                        vmin=-np.nanmax(abs(self.vbar_Z1_dat_grid[counts_above_threshold])),
+                        vmax=np.nanmax(abs(self.vbar_Z1_dat_grid[counts_above_threshold])),
+                        cb_label='Vertical velocity $\overline{v_Z}$ [km s$^{-1}$]',
+                        counts_mask = counts_above_threshold)
 
         #Vertical Velocity vZZ
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.vbar_ZZ_dat_grid,
-                        'vbar_ZZ_data.pdf', colormap = 'nipy_spectral',
+                        plot_folder + 'vbar_ZZ_data.pdf', colormap = 'nipy_spectral',
                         Norm = 'linear',
-                        vmin=np.amin(self.vbar_ZZ_dat_grid[~np.isnan(self.vbar_ZZ_dat_grid)]),
-                        vmax=4000,#np.amax(self.vbar_ZZ_dat_grid[~np.isnan(self.vbar_ZZ_dat_grid)]),
-                        cb_label='Vertical velocity $\overline{v_Z v_Z}$ [km$^{2}$ s$^{-2}$]')
+                        vmin=np.nanmin(self.vbar_ZZ_dat_grid[counts_above_threshold]),
+                        vmax=np.nanmax(self.vbar_ZZ_dat_grid[counts_above_threshold]),
+                        cb_label='Vertical velocity $\overline{v_Z v_Z}$ [km$^{2}$ s$^{-2}$]',
+                        counts_mask = counts_above_threshold)
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, gaussianity_pval_vbar_ZZ_dat_grid,
-                        'vbar_ZZ_gauss_pval.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_ZZ_gauss_pval.pdf', colormap = 'magma',
                         Norm = 'lognorm', vmin=1e-2, vmax=1.,
                         cb_label='$\overline{v_Z v_Z}$  gaussianity p-value')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, skewness_stat_vbar_ZZ_dat_grid,
-                        'vbar_ZZ_skew_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_ZZ_skew_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_Z v_Z}$  skewness z-score')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, kurtosis_stat_vbar_ZZ_dat_grid,
-                        'vbar_ZZ_kurt_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_ZZ_kurt_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_Z v_Z}$  kurtosis z-score')
 
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_ZZ_dat_grid, self.vbar_ZZ_std_grid,self.vbar_ZZ_std_grid,
-                        'vbar_ZZ_data_w_line.pdf', colormap = 'nipy_spectral',
+                        plot_folder + 'vbar_ZZ_data_w_line.pdf', colormap = 'nipy_spectral',
                         Norm = 'linear',
-                        vmin=np.amin(self.vbar_ZZ_dat_grid[~np.isnan(self.vbar_ZZ_dat_grid)]),
-                        vmax=4000,
-                        cb_label='Vertical velocity $\overline{v_Z v_Z}$ [km$^{2}$ s$^{-2}$]')
+                        vmin=np.nanmin(self.vbar_ZZ_dat_grid[counts_above_threshold]),
+                        vmax=np.nanmax(self.vbar_ZZ_dat_grid[counts_above_threshold]),
+                        cb_label='Vertical velocity $\overline{v_Z v_Z}$ [km$^{2}$ s$^{-2}$]',
+                        counts_mask = counts_above_threshold)
 
         #Radial Velocity vR
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.vbar_R1_dat_grid,
-                        'vbar_R1_data.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_R1_data.pdf', colormap = 'seismic',
                         Norm = 'linear',
-                        vmin=np.amin(self.vbar_R1_dat_grid[~np.isnan(self.vbar_R1_dat_grid)]),
-                        vmax=np.amax(self.vbar_R1_dat_grid[~np.isnan(self.vbar_R1_dat_grid)]),
-                        cb_label='Radial velocity $\overline{v_R}$ [km s$^{-1}$]')
+                        vmin=-np.nanmax(abs(self.vbar_R1_dat_grid[counts_above_threshold])),
+                        vmax=np.nanmax(abs(self.vbar_R1_dat_grid[counts_above_threshold])),
+                        cb_label='Radial velocity $\overline{v_R}$ [km s$^{-1}$]',
+                        counts_mask = counts_above_threshold)
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, gaussianity_pval_vbar_R1_dat_grid,
-                        'vbar_R1_gauss_pval.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_R1_gauss_pval.pdf', colormap = 'magma',
                         Norm = 'lognorm', vmin=1e-2, vmax=1.,
                         cb_label='$\overline{v_R}$  gaussianity p-value')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, skewness_stat_vbar_R1_dat_grid,
-                        'vbar_R1_skew_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_R1_skew_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_R}$  Skewness z-score')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, kurtosis_stat_vbar_R1_dat_grid,
-                        'vbar_R1_kurt_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_R1_kurt_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_R}$  kurtosis z-score')
 
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_R1_dat_grid, self.vbar_R1_std_grid,self.vbar_R1_std_grid,
-                        'vbar_R1_data_w_line.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_R1_data_w_line.pdf', colormap = 'seismic',
                         Norm = 'linear',
-                        vmin=np.amin(self.vbar_R1_dat_grid[~np.isnan(self.vbar_R1_dat_grid)]),
-                        vmax=np.amax(self.vbar_R1_dat_grid[~np.isnan(self.vbar_R1_dat_grid)]),
-                        cb_label='Radial velocity $\overline{v_R}$ [km s$^{-1}$]')
+                        vmin=-np.nanmax(abs(self.vbar_R1_dat_grid[counts_above_threshold])),
+                        vmax=np.nanmax(abs(self.vbar_R1_dat_grid[counts_above_threshold])),
+                        cb_label='Radial velocity $\overline{v_R}$ [km s$^{-1}$]',
+                        counts_mask = counts_above_threshold)
 
         #Radial Velocity vRR
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.vbar_RR_dat_grid,
-                        'vbar_RR_data.pdf', colormap = 'nipy_spectral',
+                        plot_folder + 'vbar_RR_data.pdf', colormap = 'nipy_spectral',
                         Norm = 'linear',
-                        vmin=np.amin(self.vbar_RR_dat_grid[~np.isnan(self.vbar_RR_dat_grid)]),
-                        vmax=np.amax(self.vbar_RR_dat_grid[~np.isnan(self.vbar_RR_dat_grid)]),
-                        cb_label='Radial velocity $\overline{v_R v_R}$ [km$^{2}$ s$^{-2}$]')
+                        vmin=np.nanmin(self.vbar_RR_dat_grid[counts_above_threshold]),
+                        vmax=np.nanmax(self.vbar_RR_dat_grid[counts_above_threshold]),
+                        cb_label='Radial velocity $\overline{v_R v_R}$ [km$^{2}$ s$^{-2}$]',
+                        counts_mask = counts_above_threshold)
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, gaussianity_pval_vbar_RR_dat_grid,
-                        'vbar_RR_gauss_pval.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_RR_gauss_pval.pdf', colormap = 'magma',
                         Norm = 'lognorm', vmin=1e-2, vmax=1.,
                         cb_label='$\overline{v_R v_R}$  gaussianity p-value')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, skewness_stat_vbar_RR_dat_grid,
-                        'vbar_RR_skew_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_RR_skew_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_R v_R}$  Skewness z-score')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, kurtosis_stat_vbar_RR_dat_grid,
-                        'vbar_RR_kurt_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_RR_kurt_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_R v_R}$  kurtosis z-score')
 
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_RR_dat_grid, self.vbar_RR_std_grid,self.vbar_RR_std_grid,
-                        'vbar_RR_data_w_line.pdf', colormap = 'nipy_spectral',
+                        plot_folder + 'vbar_RR_data_w_line.pdf', colormap = 'nipy_spectral',
                         Norm = 'linear',
-                        vmin=np.amin(self.vbar_RR_dat_grid[~np.isnan(self.vbar_RR_dat_grid)]),
-                        vmax=np.amax(self.vbar_RR_dat_grid[~np.isnan(self.vbar_RR_dat_grid)]),
-                        cb_label='Radial velocity $\overline{v_R v_R}$ [km$^{2}$ s$^{-2}$]')
+                        vmin=np.nanmin(self.vbar_RR_dat_grid[counts_above_threshold]),
+                        vmax=np.nanmax(self.vbar_RR_dat_grid[counts_above_threshold]),
+                        cb_label='Radial velocity $\overline{v_R v_R}$ [km$^{2}$ s$^{-2}$]',
+                        counts_mask = counts_above_threshold)
 
         #Tangential Velocity vp
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.vbar_p1_dat_grid,
-                        'vbar_p1_data.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_p1_data.pdf', colormap = 'magma',
                         Norm = 'linear',
-                        vmin=np.amin(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
-                        vmax=np.amax(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
-                        cb_label='Angular Velocity $\overline{v_\phi}$ [rad s$^{-1}$]')
+                        vmin=np.nanmin(self.vbar_p1_dat_grid[counts_above_threshold]),
+                        vmax=np.nanmax(self.vbar_p1_dat_grid[counts_above_threshold]),
+                        cb_label='Angular Velocity $\overline{v_\phi}$ [rad s$^{-1}$]',
+                        counts_mask = counts_above_threshold)
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, gaussianity_pval_vbar_p1_dat_grid,
-                        'vbar_p1_gauss_pval.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_p1_gauss_pval.pdf', colormap = 'magma',
                         Norm = 'lognorm', vmin=1e-2, vmax=1.,
                         cb_label='$\overline{v_p}$  gaussianity p-value')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, skewness_stat_vbar_p1_dat_grid,
-                        'vbar_p1_skew_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_p1_skew_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_p}$  Skewness z-score')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, kurtosis_stat_vbar_p1_dat_grid,
-                        'vbar_p1_kurt_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_p1_kurt_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_p}$  kurtosis z-score')
 
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_p1_dat_grid*self.R_data_coords_mesh*3.086E1, #picorad/s *
-                        'vbar_T1_data.pdf', colormap = 'nipy_spectral',
+                        plot_folder + 'vbar_T1_data.pdf', colormap = 'nipy_spectral',
                         Norm = 'linear',
-                        vmin=None,#np.amin(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
-                        vmax=None,#np.amax(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
-                        cb_label='Tangential velocity $\overline{v_p}$ [km s$^{-1}$]')
+                        vmin=np.nanmin((self.vbar_p1_dat_grid*self.R_data_coords_mesh*3.086E1)[counts_above_threshold]),
+                        vmax=np.nanmax((self.vbar_p1_dat_grid*self.R_data_coords_mesh*3.086E1)[counts_above_threshold]),
+                        cb_label='Tangential velocity $\overline{v_p}$ [km s$^{-1}$]',
+                        counts_mask = counts_above_threshold)
 
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_p1_dat_grid, self.vbar_p1_std_grid,self.vbar_p1_std_grid,
-                        'vbar_p1_data_w_line.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_p1_data_w_line.pdf', colormap = 'magma',
                         Norm = 'linear',
-                        vmin=np.amin(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
-                        vmax=np.amax(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
-                        cb_label='Angular Velocity $\overline{v_\phi}$ [rad s$^{-1}$]')
+                        vmin=np.nanmin(self.vbar_p1_dat_grid[counts_above_threshold]),
+                        vmax=np.nanmax(self.vbar_p1_dat_grid[counts_above_threshold]),
+                        cb_label='Angular Velocity $\overline{v_\phi}$ [rad s$^{-1}$]',
+                        counts_mask = counts_above_threshold)
 
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_p1_dat_grid*self.R_data_coords_mesh*3.086E1,
                         self.vbar_p1_std_grid*self.R_data_coords_mesh*3.086E1,
                         self.vbar_p1_std_grid*self.R_data_coords_mesh*3.086E1,
-                        'vbar_T1_data_w_line.pdf', colormap = 'nipy_spectral',
+                        plot_folder + 'vbar_T1_data_w_line.pdf', colormap = 'nipy_spectral',
                         Norm = 'linear',
                         vmin=None,#np.amin(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
                         vmax=None,#np.amax(self.vbar_p1_dat_grid[~np.isnan(self.vbar_p1_dat_grid)]),
-                        cb_label='Tangential velocity $\overline{v_p}$ [km s$^{-1}$]')
+                        cb_label='Tangential velocity $\overline{v_p}$ [km s$^{-1}$]',
+                        counts_mask = counts_above_threshold)
 
 
         #Tilt Term vRvZ
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, self.vbar_RZ_dat_grid,
-                        'vbar_RZ_data.pdf', colormap = 'seismic',
+                        plot_folder + 'vbar_RZ_data.pdf', colormap = 'seismic',
                         Norm = 'symlognorm',
-                        vmin=-np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
-                        vmax=np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
+                        vmin=-np.nanmax(abs(self.vbar_RZ_dat_grid[counts_above_threshold])),
+                        vmax=np.nanmax(abs(self.vbar_RZ_dat_grid[counts_above_threshold])),
                         linthresh = 200, linscale = 1.0,
-                        cb_label='RZ velocity cross term $\overline{v_R v_Z}$ [km$^{2}$ s$^{-2}$]')
+                        cb_label='RZ velocity cross term $\overline{v_R v_Z}$ [km$^{2}$ s$^{-2}$]',
+                        counts_mask = counts_above_threshold)
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, gaussianity_pval_vbar_RZ_dat_grid,
-                        'vbar_RZ_gauss_pval.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_RZ_gauss_pval.pdf', colormap = 'magma',
                         Norm = 'lognorm', vmin=1e-2, vmax=1.,
                         cb_label='$\overline{v_R v_Z}$  gaussianity p-value')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, skewness_stat_vbar_RZ_dat_grid,
-                        'vbar_RZ_skew_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_RZ_skew_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_R v_Z}$  Skewness z-score')
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh, kurtosis_stat_vbar_RZ_dat_grid,
-                        'vbar_RZ_kurt_stat.pdf', colormap = 'magma',
+                        plot_folder + 'vbar_RZ_kurt_stat.pdf', colormap = 'magma',
                         Norm = 'linear', vmin=0., vmax=1.,
                         cb_label = '$\overline{v_R v_Z}$  kurtosis z-score')
 
         plot_RZ_heatmap_and_lines(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_RZ_dat_grid, self.vbar_RZ_std_grid,self.vbar_RZ_std_grid,
-                        'vbar_RZ_data_w_line.pdf', colormap = 'seismic',
+                        plot_folder + 'vbar_RZ_data_w_line.pdf', colormap = 'seismic',
                         Norm = 'symlognorm',
-                        vmin=-np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
-                        vmax=np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
+                        vmin=-np.nanmax(abs(self.vbar_RZ_dat_grid[counts_above_threshold])),
+                        vmax=np.nanmax(abs(self.vbar_RZ_dat_grid[counts_above_threshold])),
                         linthresh = 200, linscale = 1.0,
-                        cb_label='RZ velocity cross term $\overline{v_R v_Z}$ [km$^{2}$ s$^{-2}$]')
+                        cb_label='RZ velocity cross term $\overline{v_R v_Z}$ [km$^{2}$ s$^{-2}$]',
+                        counts_mask = counts_above_threshold)
 
         plot_RZ_heatmap(self.R_data_coords_mesh, self.Z_data_coords_mesh,
                         self.R_edges_mesh, self.Z_edges_mesh,
                         self.vbar_RZ_dat_grid - self.vbar_R1_dat_grid*self.vbar_Z1_dat_grid,
-                        'sigma_RZ_data.pdf', colormap = 'seismic',
+                        plot_folder + 'sigma_RZ_data.pdf', colormap = 'seismic',
                         Norm = 'symlognorm',
-                        vmin=-np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
-                        vmax=np.amax(abs(self.vbar_RZ_dat_grid[~np.isnan(self.vbar_RZ_dat_grid)])),
+                        vmin=-np.nanmax(abs(self.vbar_RZ_dat_grid[counts_above_threshold])),
+                        vmax=np.nanmax(abs(self.vbar_RZ_dat_grid[counts_above_threshold])),
                         linthresh = 200, linscale = 1.0,
-                        cb_label='RZ velocity cross term $\sigma_{RZ} = \overline{v_R v_Z} - \overline{v_R}\,\overline{v_Z}$ [km$^{2}$ s$^{-2}$]')
+                        cb_label='RZ velocity cross term $\sigma_{RZ} = \overline{v_R v_Z} \
+                                    - \overline{v_R}\,\overline{v_Z}$ [km$^{2}$ s$^{-2}$]',
+                        counts_mask = counts_above_threshold)
 
     def plot_correlation_matrix(self):
         # Total Correlation Matrix
@@ -1214,8 +1264,139 @@ class oscar_gaia_data:
 
 if __name__ == "__main__":
 
-    oscar_test = oscar_gaia_data(N_samplings = 15, N_cores=1,num_R_bins=10,num_Z_bins=21,
-                                Rmin = 7000, Rmax = 9000, Zmin= -1500, Zmax=1500,
-                                    binning_type='linear')
-    oscar_test.plot_histograms()
-    #oscar_test.plot_correlation_matrix()
+
+    polygon_giant_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Gaia_DR2_subsamples/',
+                        data_file_name = 'GaiaDR2_polygon_giant_(1p6_1p3)_(1p6_0p4)_(0p9_-0p8)_(0p9_0p1)Nstars_882111.csv',
+                        N_samplings = 20, N_cores=1, num_R_bins=100,num_Z_bins=41,
+                        Rmin = 4000, Rmax = 14000, Zmin= -2050, Zmax=2050,
+                        binning_type='linear', calculate_covariance=False)
+    polygon_giant_sample.plot_histograms(counts_threshold=50)
+
+
+    polygon_rc_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Gaia_DR2_subsamples/',
+                        data_file_name = 'GaiaDR2_rc_polygon_(1p6_1p3)_(1p6_0p4)_(0p9_-0p8)_(0p9_0p1)Nstars_1429707.csv',
+                        N_samplings = 20, N_cores=1, num_R_bins=100,num_Z_bins=41,
+                        Rmin = 4000, Rmax = 14000, Zmin= -2050, Zmax=2050,
+                        binning_type='linear', calculate_covariance=False)
+    polygon_rc_sample.plot_histograms(counts_threshold=50)
+    #polygon_rc_sample.plot_correlation_matrix()
+
+    polygon_ums_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Gaia_DR2_subsamples/',
+                        data_file_name = 'GaiaDR2_ums_polygon_(1p0_3p8)_(0p5_1)_(0p5_3p2)_(1p0_6p0)Nstars_1608461.csv',
+                        N_samplings = 20, N_cores=1, num_R_bins=40,num_Z_bins=21,
+                        Rmin = 6000, Rmax = 10000, Zmin= -1050, Zmax=1050,
+                        binning_type='linear', calculate_covariance=False)
+    polygon_ums_sample.plot_histograms(counts_threshold=50)
+
+
+
+
+
+    # oscar_RC_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Gaia_DR2_subsamples/',
+    #                     data_file_name = 'GaiaDR2_RC_sample_Mcut_0p0_0p75_Ccut_1p0_1p5Nstars_1333998.csv',
+    #                     N_samplings = 13, N_cores=1,num_R_bins=51,num_Z_bins=31,
+    #                     Rmin = 5500, Rmax = 10500, Zmin= -1550, Zmax=1550,
+    #                     binning_type='linear', calculate_covariance=False)
+    # oscar_RC_sample.plot_histograms()
+    # #oscar_test.plot_correlation_matrix()
+
+
+    # mss_N_samplings = 20
+    # mss_0_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss0_sample_Mcut_2p680834077095114_4p509648326177585_Ccut_0p7_0p8Nstars_396096.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=30,num_Z_bins=21,
+    #                     Rmin = 7000, Rmax = 9200, Zmin= -1000, Zmax=1000,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_0_sample.plot_histograms()
+    #
+    # mss_1_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss1_sample_Mcut_3p483257897203647_4p963103735401358_Ccut_0p8_0p9Nstars_349647.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=30,num_Z_bins=21,
+    #                     Rmin = 7500, Rmax = 9000, Zmin= -500, Zmax=500,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_1_sample.plot_histograms()
+    #
+    # mss_2_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss2_sample_Mcut_4p208293112626515_5p390342626416602_Ccut_0p9_1p0Nstars_203311.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=30,num_Z_bins=21,
+    #                     Rmin = 7500, Rmax = 8750, Zmin= -500, Zmax=500,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_2_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_3_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss3_sample_Mcut_4p761412693939956_5p759899069517786_Ccut_1p0_1p1Nstars_117581.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=30,num_Z_bins=21,
+    #                     Rmin = 7500, Rmax = 8750, Zmin= -500, Zmax=500,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_3_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_4_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss4_sample_Mcut_5p199801757757168_6p094450491862215_Ccut_1p1_1p2Nstars_75090.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=30,num_Z_bins=21,
+    #                     Rmin = 7500, Rmax = 8750, Zmin= -500, Zmax=500,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_4_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_5_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss5_sample_Mcut_5p4615290587557785_6p454115452315832_Ccut_1p2_1p3Nstars_53353.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=10,num_Z_bins=11,
+    #                     Rmin = 7500, Rmax = 8750, Zmin= -500, Zmax=500,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_5_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_6_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss6_sample_Mcut_5p86027144925499_6p696716717045112_Ccut_1p3_1p4Nstars_35245.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=10,num_Z_bins=11,
+    #                     Rmin = 7500, Rmax = 8750, Zmin= -500, Zmax=500,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_6_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_7_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss7_sample_Mcut_6p179696954922981_6p93916443573484_Ccut_1p4_1p5Nstars_25302.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=10,num_Z_bins=11,
+    #                     Rmin = 7500, Rmax = 8750, Zmin= -500, Zmax=500,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_7_sample.plot_histograms(counts_threshold=10)
+    #
+    #
+    # mss_8_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss8_sample_Mcut_6p457783603082307_7p187519024129671_Ccut_1p5_1p6Nstars_19254.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=10,num_Z_bins=11,
+    #                     Rmin = 7500, Rmax = 8750, Zmin= -500, Zmax=500,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_8_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_9_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss9_sample_Mcut_6p71404554465917_7p431627388152755_Ccut_1p6_1p7Nstars_15012.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=10,num_Z_bins=11,
+    #                     Rmin = 7500, Rmax = 8750, Zmin= -300, Zmax=300,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_9_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_10_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss10_sample_Mcut_6p950222791369611_7p68319287831122_Ccut_1p7_1p8Nstars_11985.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=10,num_Z_bins=11,
+    #                     Rmin = 7750, Rmax = 8750, Zmin= -250, Zmax=250,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_10_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_11_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss11_sample_Mcut_7p185679698508602_7p950513215069613_Ccut_1p8_1p9Nstars_9942.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=10,num_Z_bins=11,
+    #                     Rmin = 7750, Rmax = 8750, Zmin= -250, Zmax=250,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_11_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_12_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss12_sample_Mcut_7p386022094200738_8p239981460926867_Ccut_1p9_2p0Nstars_8097.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=10,num_Z_bins=10,
+    #                     Rmin = 8000, Rmax = 8500, Zmin= -150, Zmax=150,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_12_sample.plot_histograms(counts_threshold=10)
+    #
+    # mss_13_sample = oscar_gaia_data(data_root = '../Astrometric_Data/Bennett_Bovy_Gaia_DR2_Subsamples/',
+    #                     data_file_name = 'GaiaDR2_mss13_sample_Mcut_7p566813524362149_8p554222261071944_Ccut_2p0_2p1Nstars_6610.csv',
+    #                     N_samplings = mss_N_samplings, N_cores=1,num_R_bins=10,num_Z_bins=10,
+    #                     Rmin = 8000, Rmax = 8500, Zmin= -100, Zmax=100,
+    #                     binning_type='linear', calculate_covariance=False)
+    # mss_13_sample.plot_histograms(counts_threshold=10)
