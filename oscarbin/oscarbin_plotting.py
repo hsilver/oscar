@@ -197,9 +197,8 @@ def plot_RZ_histograms(oscar_obj, counts_threshold = 50, phi_slice = 0):
                     oscar_obj.binning_type + '/'
     if not os.path.isdir(plot_folder):
         os.makedirs(plot_folder)
-    pdb.set_trace()
-    # PLOT RESULTS
 
+    # PLOT RESULTS
     skewness_stat_counts_grid,\
     skewness_stat_vbar_R1_dat_grid, skewness_stat_vbar_p1_dat_grid,\
     skewness_stat_vbar_Z1_dat_grid, skewness_stat_vbar_RR_dat_grid,\

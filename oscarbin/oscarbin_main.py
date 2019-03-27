@@ -13,9 +13,6 @@ import hashlib
 import sklearn
 import sklearn.covariance as sklcov
 
-import oscar_plotting
-
-
 def calc_epoch_T(epoch):
     if epoch == 'J2000':
         # Apparently from astropy
@@ -276,6 +273,15 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, R_edges, phi_ed
                                             bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
     #print('vbar_zz done')
 
+    vbar_Rp_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
+                                            vRg_vec*vphig_vec,
+                                            statistic='mean',
+                                            bins=[R_edges, phi_edges, Z_edges])[0])
+    vbar_Rp_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
+                                            vRg_vec*vphig_vec,
+                                            statistic=np.std,
+                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
+
     vbar_RZ_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
                                             vRg_vec*vZg_vec,
                                             statistic='mean',
@@ -285,14 +291,23 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, R_edges, phi_ed
                                             statistic=np.std,
                                             bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
 
+    vbar_pZ_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
+                                            vphig_vec*vZg_vec,
+                                            statistic='mean',
+                                            bins=[R_edges, phi_edges, Z_edges])[0])
+    vbar_pZ_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
+                                            vphig_vec*vZg_vec,
+                                            statistic=np.std,
+                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
+
     return np.array([counts_grid,
             vbar_R1_dat_grid, vbar_p1_dat_grid, vbar_Z1_dat_grid,
             vbar_RR_dat_grid, vbar_pp_dat_grid, vbar_ZZ_dat_grid,
-            vbar_RZ_dat_grid]),\
+            vbar_Rp_dat_grid, vbar_RZ_dat_grid, vbar_pZ_dat_grid]),\
             np.array([counts_pois_grid,
             vbar_R1_std_grid,vbar_p1_std_grid,vbar_Z1_std_grid,
             vbar_RR_std_grid,vbar_pp_std_grid,vbar_ZZ_std_grid,
-            vbar_RZ_std_grid])
+            vbar_Rp_std_grid, vbar_RZ_std_grid, vbar_pZ_std_grid])
 
 
 def sample_transform_bin(astrometric_means, astrometric_covariances,
@@ -523,7 +538,9 @@ class oscar_gaia_data:
             self.vbar_RR_dat_grid = cache_dataframe['vbar_RR_dat_grid']
             self.vbar_pp_dat_grid = cache_dataframe['vbar_pp_dat_grid']
             self.vbar_ZZ_dat_grid = cache_dataframe['vbar_ZZ_dat_grid']
+            self.vbar_Rp_dat_grid = cache_dataframe['vbar_Rp_dat_grid']
             self.vbar_RZ_dat_grid = cache_dataframe['vbar_RZ_dat_grid']
+            self.vbar_pZ_dat_grid = cache_dataframe['vbar_pZ_dat_grid']
             self.counts_std_grid = cache_dataframe['counts_std_grid']
             self.nu_std_grid = cache_dataframe['nu_std_grid']
             self.vbar_R1_std_grid = cache_dataframe['vbar_R1_std_grid']
@@ -532,7 +549,9 @@ class oscar_gaia_data:
             self.vbar_RR_std_grid = cache_dataframe['vbar_RR_std_grid']
             self.vbar_pp_std_grid = cache_dataframe['vbar_pp_std_grid']
             self.vbar_ZZ_std_grid = cache_dataframe['vbar_ZZ_std_grid']
+            self.vbar_Rp_std_grid = cache_dataframe['vbar_Rp_std_grid']
             self.vbar_RZ_std_grid = cache_dataframe['vbar_RZ_std_grid']
+            self.vbar_pZ_std_grid = cache_dataframe['vbar_pZ_std_grid']
 
         else:
             print('No previous sampling found, running from scratch')
@@ -578,7 +597,7 @@ class oscar_gaia_data:
                 print('Wall time per sample: ', (end-start)/N_samplings)
 
             #Calculate means and covariances, Skewness, Kurtosis
-            grid_shape = (8, len(self.R_edges)-1, len(self.phi_edges)-1, len(self.Z_edges)-1)
+            grid_shape = (10, len(self.R_edges)-1, len(self.phi_edges)-1, len(self.Z_edges)-1)
             subvector_length = (len(self.R_edges)-1)*(len(self.phi_edges)-1)*(len(self.Z_edges)-1)
 
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
@@ -627,12 +646,12 @@ class oscar_gaia_data:
             self.counts_grid,\
             self.vbar_R1_dat_grid, self.vbar_p1_dat_grid, self.vbar_Z1_dat_grid,\
             self.vbar_RR_dat_grid, self.vbar_pp_dat_grid, self.vbar_ZZ_dat_grid,\
-            self.vbar_RZ_dat_grid = self.data_mean_grids
+            self.vbar_Rp_dat_grid, self.vbar_RZ_dat_grid, self.vbar_pZ_dat_grid = self.data_mean_grids
 
             self.counts_std_grid,\
             self.vbar_R1_std_grid, self.vbar_p1_std_grid, self.vbar_Z1_std_grid,\
             self.vbar_RR_std_grid, self.vbar_pp_std_grid, self.vbar_ZZ_std_grid,\
-            self.vbar_RZ_std_grid = self.data_std_total_grids
+            self.vbar_Rp_std_grid, self.vbar_RZ_std_grid, self.vbar_pZ_std_grid = self.data_std_total_grids
 
             # Calculate tracer density
             self.nu_dat_grid = self.counts_grid/self.bin_vol_grid
@@ -668,7 +687,9 @@ class oscar_gaia_data:
                             'vbar_RR_dat_grid' : self.vbar_RR_dat_grid,
                             'vbar_pp_dat_grid' : self.vbar_pp_dat_grid,
                             'vbar_ZZ_dat_grid' : self.vbar_ZZ_dat_grid,
+                            'vbar_Rp_dat_grid' : self.vbar_Rp_dat_grid,
                             'vbar_RZ_dat_grid' : self.vbar_RZ_dat_grid,
+                            'vbar_pZ_dat_grid' : self.vbar_pZ_dat_grid,
                             'counts_std_grid' : self.counts_std_grid,
                             'nu_std_grid' : self.nu_std_grid,
                             'vbar_R1_std_grid' : self.vbar_R1_std_grid,
@@ -677,7 +698,9 @@ class oscar_gaia_data:
                             'vbar_RR_std_grid' : self.vbar_RR_std_grid,
                             'vbar_pp_std_grid' : self.vbar_pp_std_grid,
                             'vbar_ZZ_std_grid' : self.vbar_ZZ_std_grid,
+                            'vbar_Rp_std_grid' : self.vbar_Rp_std_grid,
                             'vbar_RZ_std_grid' : self.vbar_RZ_std_grid,
+                            'vbar_pZ_std_grid' : self.vbar_pZ_std_grid,
                             }
 
             cache_dataframe = pd.Series(dictionary)
