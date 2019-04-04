@@ -615,21 +615,17 @@ class oscar_gaia_data:
             os.mkdir(data_root + '/oscar_cache_files/')
 
         if self.positions_only:
-            cache_file_name = 'oscar_cache_positions_only' + hashlib.md5(self.R_edges).hexdigest()\
-                                + hashlib.md5(self.phi_edges).hexdigest()\
-                                + hashlib.md5(self.Z_edges).hexdigest()\
-                                + hashlib.md5(self.solar_pomo_means).hexdigest()\
-                                + hashlib.md5(self.solar_pomo_covariances).hexdigest()\
-                                + str(self.N_samplings)\
-                                + data_file_name.split('.')[0] + '.dat'
+            cache_file_name = 'oscar_cache_positions_only_' \
+                + hashlib.md5(np.concatenate([self.R_edges,self.phi_edges,self.Z_edges])).hexdigest()\
+                + hashlib.md5(np.concatenate([self.solar_pomo_means, self.solar_pomo_covariances.flatten()])).hexdigest()\
+                + '_' + str(self.N_samplings)\
+                + data_file_name.split('.')[0] + '.dat'
         else:
-            cache_file_name = 'oscar_cache_' + hashlib.md5(self.R_edges).hexdigest()\
-                                + hashlib.md5(self.phi_edges).hexdigest()\
-                                + hashlib.md5(self.Z_edges).hexdigest()\
-                                + hashlib.md5(self.solar_pomo_means).hexdigest()\
-                                + hashlib.md5(self.solar_pomo_covariances).hexdigest()\
-                                + str(self.N_samplings)\
-                                + data_file_name.split('.')[0] + '.dat'
+            cache_file_name = 'oscar_cache_' \
+                + hashlib.md5(np.concatenate([self.R_edges,self.phi_edges,self.Z_edges])).hexdigest()\
+                + hashlib.md5(np.concatenate([self.solar_pomo_means, self.solar_pomo_covariances.flatten()])).hexdigest()\
+                + '_' + str(self.N_samplings)\
+                + data_file_name.split('.')[0] + '.dat'
 
         # Search for cache file
         if os.path.isfile(data_root + '/oscar_cache_files/' + cache_file_name):
