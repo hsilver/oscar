@@ -188,6 +188,80 @@ def astrometric_to_galactocentric(ra, dec, para, pm_ra, pm_dec, vr, Rsun, phisun
 
     return Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec
 
+def astrometric_to_galactocentric_positions_only(ra, dec, para,  Rsun, phisun, Zsun, epoch_T):
+    """
+    Frankensteined together from Jo Bovy's galpy code. Any errors most likely
+    attributable to HS.
+    Inputs:
+      ra          rad     array
+      dec         rad     array
+      parallax    mas     array
+      Rsun        pc
+      phisun      rads (but zero by default)
+      Zsun        pc
+    """
+    print_out = False
+    #ra and dec to galactic latitude and longitude
+    lb_one = np.array([np.cos(dec) * np.cos(ra),
+                        np.cos(dec) * np.sin(ra),
+                        np.sin(dec)])
+    lb_two = np.dot(epoch_T, lb_one)
+
+    lb_two[2][lb_two[2] > 1.]= 1.
+    lb_two[2][lb_two[2] < -1.]= -1.
+
+    b_vec = np.arcsin(lb_two[2])
+    l_vec = np.arctan2(lb_two[1]/np.cos(b_vec),
+                        lb_two[0]/np.cos(b_vec))
+    l_vec[l_vec<0.]+= 2. * np.pi
+
+    if print_out:
+        print('l_vec: ', l_vec)
+        print('b_vec: ', b_vec)
+    # parallax to distance
+    d_vec = 1000./para #pc
+    if print_out:
+        print('d_vec: ', d_vec)
+        print('')
+
+    #lbd_to_XYZ
+    Xh_vec = d_vec * np.cos(b_vec) * np.cos(l_vec) # Positive towards GC
+    Yh_vec = d_vec * np.cos(b_vec) * np.sin(l_vec)
+    Zh_vec = d_vec * np.sin(b_vec) # NB: Heliocentric Z
+    if print_out:
+        print('Xh_vec: ', Xh_vec)
+        print('Yh_vec: ', Yh_vec)
+        print('Zh_vec: ', Zh_vec)
+        print('')
+
+    #XYZ_to_galcencyl
+    dgc = np.sqrt(Rsun**2 + Zsun**2)
+    h2g_rot_mat = np.array([[Rsun/dgc, 0., -Zsun/dgc],
+                            [0.,1.,0.],
+                            [Zsun/dgc, 0., Rsun/dgc]])
+    Xg_vec, Yg_vec, Zg_vec = np.dot(h2g_rot_mat,
+                                np.array([-Xh_vec + dgc,
+                                            Yh_vec,
+                                            np.sign(Rsun)*Zh_vec]))
+
+    if print_out:
+        print('Xg_vec: ', Xg_vec)
+        print('Yg_vec: ', Yg_vec)
+        print('Zg_vec: ', Zg_vec)
+        print('')
+
+    Rg_vec = np.sqrt(Xg_vec**2 + Yg_vec**2)
+    phig_vec = np.arctan2(Yg_vec, Xg_vec)
+
+    if print_out:
+        print('Rg_vec: ', Rg_vec)
+        print('phig_vec: ', phig_vec)
+        print('Zg_vec: ', Zg_vec)
+        print('')
+
+    return Rg_vec, phig_vec, Zg_vec
+
+
 def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, R_edges, phi_edges, Z_edges):
     """
     Rg_vec, star_data_gccyl[0]
@@ -206,7 +280,7 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, R_edges, phi_ed
     counts_pois_grid = np.sqrt(counts_grid)
 
     #print('Counts done')
-    # AVERAGE VELOCITIES
+    # AVERAGE VELOCITIES #[Rg_vec,phig_vec,Zg_vec]
     vbar_R1_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
                                             vRg_vec,
                                             statistic='mean',
@@ -310,35 +384,57 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, R_edges, phi_ed
             vbar_Rp_std_grid, vbar_RZ_std_grid, vbar_pZ_std_grid])
 
 
+def binning_positions_only(Rg_vec, phig_vec, Zg_vec, R_edges, phi_edges, Z_edges):
+    counts_grid = stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
+                                            Rg_vec, #dummy array for count
+                                            statistic='count',
+                                            bins=[R_edges, phi_edges, Z_edges])[0]
+    counts_pois_grid = np.sqrt(counts_grid)
+
+    return np.array([counts_grid]), np.array([counts_pois_grid])
+
 def sample_transform_bin(astrometric_means, astrometric_covariances,
                             cholesky_astrometric_covariances,
                             solar_pomo_means, solar_pomo_covariances,
                             epoch_T, seed,
-                            R_edges, phi_edges, Z_edges):
+                            R_edges, phi_edges, Z_edges,
+                            positions_only=False):
     """
     #https://stackoverflow.com/questions/14920272/generate-a-data-set-consisting-of-n-100-2-dimensional-samples
     """
     rand.seed(int(seed + int(time.time())%10000+1))
     # stars_sample = np.array([rand.multivariate_normal(astrometric_means[ii],
     #                     astrometric_covariances[ii]) for ii in range(Nstars)])
-
     #Cholesky Decomposition Method
     Nstars = len(astrometric_means)
-    uncorrelated_sample = np.random.standard_normal((Nstars,6))
-    stars_sample = np.array([np.dot(cholesky_astrometric_covariances[ii],\
-                        uncorrelated_sample[ii]) + astrometric_means[ii] for ii in range(Nstars)])
+    if positions_only:
+        uncorrelated_sample = np.random.standard_normal((Nstars,3))
+        stars_sample = np.array([np.dot(cholesky_astrometric_covariances[ii],\
+                            uncorrelated_sample[ii]) + astrometric_means[ii] for ii in range(Nstars)])
+        solar_pomo_sample = rand.multivariate_normal(solar_pomo_means[0:3], solar_pomo_covariances[0:3,0:3])
+        Rg_vec, phig_vec, Zg_vec =astrometric_to_galactocentric_positions_only(
+                stars_sample[:,0], stars_sample[:,1], stars_sample[:,2],
+                solar_pomo_sample[0], solar_pomo_sample[1], solar_pomo_sample[2], epoch_T)
+        binned_data_vector, binned_std_vector = binning_positions_only(
+                                                Rg_vec, phig_vec, Zg_vec,
+                                                R_edges, phi_edges, Z_edges)
 
-    solar_pomo_sample = rand.multivariate_normal(solar_pomo_means, solar_pomo_covariances)
+    else:
+        uncorrelated_sample = np.random.standard_normal((Nstars,6))
+        stars_sample = np.array([np.dot(cholesky_astrometric_covariances[ii],\
+                            uncorrelated_sample[ii]) + astrometric_means[ii] for ii in range(Nstars)])
 
-    Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec = astrometric_to_galactocentric(
+        solar_pomo_sample = rand.multivariate_normal(solar_pomo_means, solar_pomo_covariances)
+        Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec = astrometric_to_galactocentric(
                     stars_sample[:,0], stars_sample[:,1], stars_sample[:,2],
                     stars_sample[:,3], stars_sample[:,4], stars_sample[:,5],
                     solar_pomo_sample[0], solar_pomo_sample[1], solar_pomo_sample[2],
                     solar_pomo_sample[3], solar_pomo_sample[4], solar_pomo_sample[5],
                     epoch_T)
-    binned_data_vector, binned_std_vector = binning(Rg_vec, phig_vec, Zg_vec,
-                                vRg_vec, vTg_vec, vZg_vec,
-                                R_edges, phi_edges, Z_edges)
+        binned_data_vector, binned_std_vector = binning(
+                                                Rg_vec, phig_vec, Zg_vec,
+                                                vRg_vec, vTg_vec, vZg_vec,
+                                                R_edges, phi_edges, Z_edges)
 
     return binned_data_vector.flatten(), binned_std_vector.flatten()
 
@@ -361,10 +457,12 @@ class oscar_gaia_data:
                         input_Z_edges = None,
                         N_samplings = 100,
                         N_cores = 1,
-                        calculate_covariance = True
+                        calculate_covariance = True,
+                        positions_only = False
                         ):
         self.data_root = data_root
         self.data_file_name = data_file_name
+
         self.binning_type = binning_type
         self.Rmin = Rmin
         self.Rmax = Rmax
@@ -380,6 +478,8 @@ class oscar_gaia_data:
         self.input_Z_edges = input_Z_edges
         self.N_samplings = N_samplings
         self.N_cores = N_cores
+        self.calculate_covariance = calculate_covariance
+        self.positions_only = positions_only
 
         # Set Constants and Parameters
         deg_to_rad = np.pi/180
@@ -406,38 +506,56 @@ class oscar_gaia_data:
         datab = pd.read_csv(self.data_root + self.data_file_name) #astrometric_data_table
 
         # Construct Means and Covarriance Matrices
-        astrometric_means = np.array([datab['ra'].values * deg_to_rad, #rad
-                                datab['dec'].values * deg_to_rad, #rad
-                                datab['parallax'].values, #mas
-                                datab['pmra'].values * maspyr_to_radps, #rad/s
-                                datab['pmdec'].values * maspyr_to_radps, #rad/s
-                                datab['radial_velocity'].values]).T #km/s
+        if self.positions_only:
+            astrometric_means = np.array([datab['ra'].values * deg_to_rad, #rad
+                                    datab['dec'].values * deg_to_rad, #rad
+                                    datab['parallax'].values]).T #mas
+        else:
+            astrometric_means = np.array([datab['ra'].values * deg_to_rad, #rad
+                                    datab['dec'].values * deg_to_rad, #rad
+                                    datab['parallax'].values, #mas
+                                    datab['pmra'].values * maspyr_to_radps, #rad/s
+                                    datab['pmdec'].values * maspyr_to_radps, #rad/s
+                                    datab['radial_velocity'].values]).T #km/s
 
         Nstars = datab['ra'].values.shape[0]
         Nzeros = np.zeros(Nstars)
-        astrometric_covariances = np.array([[(datab['ra_error'].values*mas_to_rad)**2,
-            datab['ra_dec_corr'].values * datab['ra_error'].values * datab['dec_error'].values * mas_to_rad**2,
-            datab['ra_parallax_corr'].values * datab['ra_error'].values * datab['parallax_error'].values * mas_to_rad,
-            datab['ra_pmra_corr'].values * datab['ra_error'].values * datab['pmra_error'].values * mas_to_rad * maspyr_to_radps,
-            datab['ra_pmdec_corr'].values * datab['ra_error'].values * datab['pmdec_error'].values * mas_to_rad * maspyr_to_radps,
-            Nzeros],
-            [Nzeros, (datab['dec_error'].values*mas_to_rad)**2,
-            datab['dec_parallax_corr'].values * datab['dec_error'].values * datab['parallax_error'].values * mas_to_rad,
-            datab['dec_pmra_corr'].values * datab['dec_error'].values * datab['pmra_error'].values * mas_to_rad * maspyr_to_radps,
-            datab['dec_pmdec_corr'].values * datab['dec_error'].values * datab['pmdec_error'].values * mas_to_rad * maspyr_to_radps,
-            Nzeros],
-            [Nzeros, Nzeros, datab['parallax_error'].values**2,
-            datab['parallax_pmra_corr'].values * datab['parallax_error'].values * datab['pmra_error'].values * maspyr_to_radps,
-            datab['parallax_pmdec_corr'].values * datab['parallax_error'].values * datab['pmdec_error'].values * maspyr_to_radps,
-            Nzeros],
-            [Nzeros,Nzeros,Nzeros, (datab['pmra_error'].values * maspyr_to_radps)**2,
-            datab['pmra_pmdec_corr'].values * datab['pmra_error'].values * datab['pmdec_error'].values * maspyr_to_radps**2,
-            Nzeros],
-            [Nzeros, Nzeros, Nzeros, Nzeros, (datab['pmdec_error'].values * maspyr_to_radps)**2, Nzeros],
-            [Nzeros, Nzeros, Nzeros, Nzeros, Nzeros, datab['radial_velocity_error'].values**2]])
 
-        astrometric_covariances = np.transpose(astrometric_covariances, (2,0,1)) #Rearrange
-        astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_covariances[ii].T - \
+        if self.positions_only:
+            astrometric_covariances = np.array([[(datab['ra_error'].values*mas_to_rad)**2,
+                datab['ra_dec_corr'].values * datab['ra_error'].values * datab['dec_error'].values * mas_to_rad**2,
+                datab['ra_parallax_corr'].values * datab['ra_error'].values * datab['parallax_error'].values * mas_to_rad],
+                [Nzeros, (datab['dec_error'].values*mas_to_rad)**2,
+                datab['dec_parallax_corr'].values * datab['dec_error'].values * datab['parallax_error'].values * mas_to_rad],
+                [Nzeros, Nzeros, datab['parallax_error'].values**2]])
+            astrometric_covariances = np.transpose(astrometric_covariances, (2,0,1)) #Rearrange
+            astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_covariances[ii].T - \
+                                            np.diagonal(astrometric_covariances[ii])*np.identity(3) \
+                                            for ii in range(Nstars)]) #Symmetrize
+        else:
+            astrometric_covariances = np.array([[(datab['ra_error'].values*mas_to_rad)**2,
+                datab['ra_dec_corr'].values * datab['ra_error'].values * datab['dec_error'].values * mas_to_rad**2,
+                datab['ra_parallax_corr'].values * datab['ra_error'].values * datab['parallax_error'].values * mas_to_rad,
+                datab['ra_pmra_corr'].values * datab['ra_error'].values * datab['pmra_error'].values * mas_to_rad * maspyr_to_radps,
+                datab['ra_pmdec_corr'].values * datab['ra_error'].values * datab['pmdec_error'].values * mas_to_rad * maspyr_to_radps,
+                Nzeros],
+                [Nzeros, (datab['dec_error'].values*mas_to_rad)**2,
+                datab['dec_parallax_corr'].values * datab['dec_error'].values * datab['parallax_error'].values * mas_to_rad,
+                datab['dec_pmra_corr'].values * datab['dec_error'].values * datab['pmra_error'].values * mas_to_rad * maspyr_to_radps,
+                datab['dec_pmdec_corr'].values * datab['dec_error'].values * datab['pmdec_error'].values * mas_to_rad * maspyr_to_radps,
+                Nzeros],
+                [Nzeros, Nzeros, datab['parallax_error'].values**2,
+                datab['parallax_pmra_corr'].values * datab['parallax_error'].values * datab['pmra_error'].values * maspyr_to_radps,
+                datab['parallax_pmdec_corr'].values * datab['parallax_error'].values * datab['pmdec_error'].values * maspyr_to_radps,
+                Nzeros],
+                [Nzeros,Nzeros,Nzeros, (datab['pmra_error'].values * maspyr_to_radps)**2,
+                datab['pmra_pmdec_corr'].values * datab['pmra_error'].values * datab['pmdec_error'].values * maspyr_to_radps**2,
+                Nzeros],
+                [Nzeros, Nzeros, Nzeros, Nzeros, (datab['pmdec_error'].values * maspyr_to_radps)**2, Nzeros],
+                [Nzeros, Nzeros, Nzeros, Nzeros, Nzeros, datab['radial_velocity_error'].values**2]])
+
+            astrometric_covariances = np.transpose(astrometric_covariances, (2,0,1)) #Rearrange
+            astrometric_covariances = np.array([astrometric_covariances[ii] + astrometric_covariances[ii].T - \
                                         np.diagonal(astrometric_covariances[ii])*np.identity(6) \
                                         for ii in range(Nstars)]) #Symmetrize
         cholesky_astrometric_covariances = np.linalg.cholesky(astrometric_covariances)
@@ -450,9 +568,9 @@ class oscar_gaia_data:
             self.R_edges = self.input_R_edges
             self.phi_edges = self.input_phi_edges
             self.Z_edges = self.input_Z_edges
-            self.num_R_bins = len(self.input_R_edges)
-            self.num_phi_bins = len(self.input_phi_edges)
-            self.num_Z_bins = len(self.input_Z_edges)
+            self.num_R_bins = len(self.input_R_edges)-1
+            self.num_phi_bins = len(self.input_phi_edges)-1
+            self.num_Z_bins = len(self.input_Z_edges)-1
         elif binning_type == 'linear':
             self.R_edges = np.linspace(self.Rmin, self.Rmax, self.num_R_bins+1)
             self.phi_edges = np.linspace(self.phimin, self.phimax, self.num_phi_bins+1)
@@ -460,11 +578,10 @@ class oscar_gaia_data:
         elif binning_type == 'quartile':
             galactocentric_means = astrometric_to_galactocentric(
                     astrometric_means[:,0], astrometric_means[:,1],
-                    astrometric_means[:,2], astrometric_means[:,3],
-                    astrometric_means[:,4], astrometric_means[:,5],
+                    astrometric_means[:,2], Nzeros,
+                    Nzeros, Nzeros,
                     self.solar_pomo_means[0], self.solar_pomo_means[1],
-                    self.solar_pomo_means[2], self.solar_pomo_means[3],
-                    self.solar_pomo_means[4], self.solar_pomo_means[5],
+                    self.solar_pomo_means[2], 0.,0.,0.,
                     epoch_T)
             Rg_vec_means = galactocentric_means[0]
             phig_vec_means = galactocentric_means[1]
@@ -497,13 +614,22 @@ class oscar_gaia_data:
         if not os.path.isdir(data_root + '/oscar_cache_files/'):
             os.mkdir(data_root + '/oscar_cache_files/')
 
-        cache_file_name = 'oscar_cache_' + hashlib.md5(self.R_edges).hexdigest()\
-                            + hashlib.md5(self.phi_edges).hexdigest()\
-                            + hashlib.md5(self.Z_edges).hexdigest()\
-                            + hashlib.md5(self.solar_pomo_means).hexdigest()\
-                            + hashlib.md5(self.solar_pomo_covariances).hexdigest()\
-                            + str(self.N_samplings)\
-                            + data_file_name.split('.')[0] + '.dat'
+        if self.positions_only:
+            cache_file_name = 'oscar_cache_positions_only' + hashlib.md5(self.R_edges).hexdigest()\
+                                + hashlib.md5(self.phi_edges).hexdigest()\
+                                + hashlib.md5(self.Z_edges).hexdigest()\
+                                + hashlib.md5(self.solar_pomo_means).hexdigest()\
+                                + hashlib.md5(self.solar_pomo_covariances).hexdigest()\
+                                + str(self.N_samplings)\
+                                + data_file_name.split('.')[0] + '.dat'
+        else:
+            cache_file_name = 'oscar_cache_' + hashlib.md5(self.R_edges).hexdigest()\
+                                + hashlib.md5(self.phi_edges).hexdigest()\
+                                + hashlib.md5(self.Z_edges).hexdigest()\
+                                + hashlib.md5(self.solar_pomo_means).hexdigest()\
+                                + hashlib.md5(self.solar_pomo_covariances).hexdigest()\
+                                + str(self.N_samplings)\
+                                + data_file_name.split('.')[0] + '.dat'
 
         # Search for cache file
         if os.path.isfile(data_root + '/oscar_cache_files/' + cache_file_name):
@@ -568,7 +694,8 @@ class oscar_gaia_data:
                                         cholesky_astrometric_covariances,
                                         self.solar_pomo_means, self.solar_pomo_covariances,
                                         epoch_T,jj,
-                                        self.R_edges, self.phi_edges, self.Z_edges)
+                                        self.R_edges, self.phi_edges, self.Z_edges,
+                                        positions_only = self.positions_only)
                     all_binned_data_vectors.append(binned_data_vector)
                     all_binned_std_vectors.append(binned_std_vector)
 
@@ -583,11 +710,12 @@ class oscar_gaia_data:
                 start = time.time()
                 pool = mp.Pool(processes=self.N_cores)
                 results = [pool.apply_async(sample_transform_bin,
-                                        args = (astrometric_means, astrometric_covariances,
-                                                cholesky_astrometric_covariances,
-                                                self.solar_pomo_means, self.solar_pomo_covariances,
-                                                epoch_T, seed,
-                                                self.R_edges, self.phi_edges, self.Z_edges)) for seed in range(N_samplings)]
+                                            (astrometric_means, astrometric_covariances,
+                                            cholesky_astrometric_covariances,
+                                            self.solar_pomo_means, self.solar_pomo_covariances,
+                                            epoch_T, seed,
+                                            self.R_edges, self.phi_edges, self.Z_edges),
+                                            dict(positions_only = self.positions_only)) for seed in range(N_samplings)]
 
                 output = [p.get() for p in results]
                 all_binned_data_vectors = np.array([output[ii][0] for ii in range(N_samplings)])
@@ -597,7 +725,10 @@ class oscar_gaia_data:
                 print('Wall time per sample: ', (end-start)/N_samplings)
 
             #Calculate means and covariances, Skewness, Kurtosis
-            grid_shape = (10, len(self.R_edges)-1, len(self.phi_edges)-1, len(self.Z_edges)-1)
+            if self.positions_only:
+                grid_shape = (1, len(self.R_edges)-1, len(self.phi_edges)-1, len(self.Z_edges)-1)
+            else:
+                grid_shape = (10, len(self.R_edges)-1, len(self.phi_edges)-1, len(self.Z_edges)-1)
             subvector_length = (len(self.R_edges)-1)*(len(self.phi_edges)-1)*(len(self.Z_edges)-1)
 
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
@@ -606,7 +737,7 @@ class oscar_gaia_data:
             self.std_mean = np.mean(all_binned_std_vectors, axis=0)
             self.std_median = np.median(all_binned_std_vectors, axis=0)
 
-            if calculate_covariance:
+            if self.calculate_covariance:
                 covariance_fit = sklcov.EmpiricalCovariance().fit(all_binned_data_vectors)
                 self.data_cov = covariance_fit.covariance_
                 self.data_var_from_cov = np.diag(self.data_cov)
@@ -621,7 +752,10 @@ class oscar_gaia_data:
             #Combine the mean sample variances with variances from the covariance fit
             #   (eg the variance between the means).
             counts_subvectors = all_binned_data_vectors[:,0:subvector_length]
-            counts_repeated = np.hstack([counts_subvectors]*8)
+            if positions_only:
+                counts_repeated = np.hstack([counts_subvectors]*1)
+            else:
+                counts_repeated = np.hstack([counts_subvectors]*10)
 
             self.data_var_avg_from_samples = np.sum(counts_repeated * \
                 (np.nan_to_num(all_binned_std_vectors)**2),axis=0)/np.sum(counts_repeated,axis=0)
@@ -643,15 +777,27 @@ class oscar_gaia_data:
             self.gaussianity_pval_grids = self.gaussianity_pval.reshape(grid_shape)
 
             # Pull out means and errors
-            self.counts_grid,\
-            self.vbar_R1_dat_grid, self.vbar_p1_dat_grid, self.vbar_Z1_dat_grid,\
-            self.vbar_RR_dat_grid, self.vbar_pp_dat_grid, self.vbar_ZZ_dat_grid,\
-            self.vbar_Rp_dat_grid, self.vbar_RZ_dat_grid, self.vbar_pZ_dat_grid = self.data_mean_grids
+            if positions_only:
+                self.counts_grid = self.data_mean_grids[0]
+                self.counts_std_grid = self.data_std_total_grids[0]
 
-            self.counts_std_grid,\
-            self.vbar_R1_std_grid, self.vbar_p1_std_grid, self.vbar_Z1_std_grid,\
-            self.vbar_RR_std_grid, self.vbar_pp_std_grid, self.vbar_ZZ_std_grid,\
-            self.vbar_Rp_std_grid, self.vbar_RZ_std_grid, self.vbar_pZ_std_grid = self.data_std_total_grids
+                self.vbar_R1_dat_grid = self.vbar_p1_dat_grid = self.vbar_Z1_dat_grid = \
+                self.vbar_RR_dat_grid = self.vbar_pp_dat_grid = self.vbar_ZZ_dat_grid = \
+                self.vbar_Rp_dat_grid = self.vbar_RZ_dat_grid = self.vbar_pZ_dat_grid = \
+                self.vbar_R1_std_grid = self.vbar_p1_std_grid = self.vbar_Z1_std_grid = \
+                self.vbar_RR_std_grid = self.vbar_pp_std_grid = self.vbar_ZZ_std_grid = \
+                self.vbar_Rp_std_grid = self.vbar_RZ_std_grid = self.vbar_pZ_std_grid = 0.*self.counts_grid
+
+            else:
+                self.counts_grid,\
+                self.vbar_R1_dat_grid, self.vbar_p1_dat_grid, self.vbar_Z1_dat_grid,\
+                self.vbar_RR_dat_grid, self.vbar_pp_dat_grid, self.vbar_ZZ_dat_grid,\
+                self.vbar_Rp_dat_grid, self.vbar_RZ_dat_grid, self.vbar_pZ_dat_grid = self.data_mean_grids
+
+                self.counts_std_grid,\
+                self.vbar_R1_std_grid, self.vbar_p1_std_grid, self.vbar_Z1_std_grid,\
+                self.vbar_RR_std_grid, self.vbar_pp_std_grid, self.vbar_ZZ_std_grid,\
+                self.vbar_Rp_std_grid, self.vbar_RZ_std_grid, self.vbar_pZ_std_grid = self.data_std_total_grids
 
             # Calculate tracer density
             self.nu_dat_grid = self.counts_grid/self.bin_vol_grid
