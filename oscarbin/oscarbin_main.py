@@ -61,7 +61,7 @@ def astrometric_to_galactocentric(ra, dec, para, pm_ra, pm_dec, vr, Rsun, phisun
       phisun      rads (but zero by default)
       Zsun        pc
       vRsun       km/s
-      vphisun     km/s
+      vTsun       km/s
       vZsun       km/s
     """
     print_out = False
@@ -271,8 +271,11 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, R_edges, phi_ed
     vRg_vec, star_V_gccyl[0]
     vphig_vec, star_V_gccyl[1]
     vZg_vec, star_V_gccyl[2]
+
+    std refers to the standard deviation of the mean, hence the extra 1/sqrt(N)
     """
-    vphig_vec = vTg_vec/(Rg_vec * 3.086E1) #picorad/s
+    #vphig_vec = vTg_vec/(Rg_vec * 3.086E1) #picorad/s
+    vphig_vec = vTg_vec/(Rg_vec * 3.086E13) #rad/s
     counts_grid = stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
                                             Rg_vec, #dummy array for count
                                             statistic='count',
