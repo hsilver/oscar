@@ -282,109 +282,39 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, R_edges, phi_ed
                                             bins=[R_edges, phi_edges, Z_edges])[0]
     counts_pois_grid = np.sqrt(counts_grid)
 
-    #print('Counts done')
-    # AVERAGE VELOCITIES #[Rg_vec,phig_vec,Zg_vec]
-    vbar_R1_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vRg_vec,
-                                            statistic='mean',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
-    vbar_R1_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vRg_vec,
-                                            statistic=np.std,
-                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
-    vbar_R1_dat_grid_median = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vRg_vec,
-                                            statistic='median',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
+    # Binning Velocity Mean Calculations
+    (vbar_R1_dat_grid, vbar_p1_dat_grid, vbar_T1_dat_grid, vbar_Z1_dat_grid,
+    vbar_RR_dat_grid, vbar_pp_dat_grid, vbar_TT_dat_grid, vbar_ZZ_dat_grid,
+    vbar_Rp_dat_grid, vbar_RT_dat_grid, vbar_RZ_dat_grid,
+    vbar_pZ_dat_grid, vbar_TZ_dat_grid)\
+        = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
+                            [vRg_vec, vphig_vec, vTg_vec, vZg_vec,
+                             vRg_vec**2, vphig_vec**2, vTg_vec**2, vZg_vec**2,
+                             vRg_vec*vphig_vec, vRg_vec*vTg_vec, vRg_vec*vZg_vec,
+                             vphig_vec*vZg_vec, vTg_vec*vZg_vec],
+                             statistic='mean',
+                             bins=[R_edges, phi_edges, Z_edges])[0])
 
-    #print('vbar_x1 done')
-
-    vbar_p1_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vphig_vec,
-                                            statistic='mean',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
-    vbar_p1_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vphig_vec,
-                                            statistic=np.std,
-                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
-    #print('vbar_p1 done')
-
-    vbar_Z1_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vZg_vec,
-                                            statistic='mean',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
-    vbar_Z1_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vZg_vec,
-                                            statistic=np.std,
-                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
-    #print('vbar_z1 done')
-
-    #AVERAGE DOUBLE VELOCITIES
-    vbar_RR_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vRg_vec**2,
-                                            statistic='mean',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
-    vbar_RR_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vRg_vec**2,
-                                            statistic=np.std,
-                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
-    #print('vbar_xx done')
-
-    vbar_pp_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vphig_vec**2,
-                                            statistic='mean',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
-    vbar_pp_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vphig_vec**2,
-                                            statistic=np.std,
-                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
-    #print('vbar_pp done')
-
-    vbar_ZZ_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vZg_vec**2,
-                                            statistic='mean',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
-    vbar_ZZ_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vZg_vec**2,
-                                            statistic=np.std,
-                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
-    #print('vbar_zz done')
-
-    vbar_Rp_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vRg_vec*vphig_vec,
-                                            statistic='mean',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
-    vbar_Rp_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vRg_vec*vphig_vec,
-                                            statistic=np.std,
-                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
-
-    vbar_RZ_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vRg_vec*vZg_vec,
-                                            statistic='mean',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
-    vbar_RZ_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vRg_vec*vZg_vec,
-                                            statistic=np.std,
-                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
-
-    vbar_pZ_dat_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vphig_vec*vZg_vec,
-                                            statistic='mean',
-                                            bins=[R_edges, phi_edges, Z_edges])[0])
-    vbar_pZ_std_grid = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
-                                            vphig_vec*vZg_vec,
-                                            statistic=np.std,
-                                            bins=[R_edges, phi_edges, Z_edges])[0]/np.sqrt(counts_grid))
+    (vbar_R1_std_grid, vbar_p1_std_grid, vbar_T1_std_grid, vbar_Z1_std_grid,
+    vbar_RR_std_grid, vbar_pp_std_grid, vbar_TT_std_grid, vbar_ZZ_std_grid,
+    vbar_Rp_std_grid, vbar_RT_std_grid, vbar_RZ_std_grid,
+    vbar_pZ_std_grid, vbar_TZ_std_grid)\
+        = np.ma.masked_invalid(stats.binned_statistic_dd([Rg_vec,phig_vec,Zg_vec],
+                            [vRg_vec, vphig_vec, vTg_vec, vZg_vec,
+                             vRg_vec**2, vphig_vec**2, vTg_vec**2, vZg_vec**2,
+                             vRg_vec*vphig_vec, vRg_vec*vTg_vec, vRg_vec*vZg_vec,
+                             vphig_vec*vZg_vec, vTg_vec*vZg_vec],
+                             statistic=np.std,
+                             bins=[R_edges, phi_edges, Z_edges])[0])/([np.sqrt(counts_grid)]*13)
 
     return np.array([counts_grid,
-            vbar_R1_dat_grid, vbar_p1_dat_grid, vbar_Z1_dat_grid,
-            vbar_RR_dat_grid, vbar_pp_dat_grid, vbar_ZZ_dat_grid,
-            vbar_Rp_dat_grid, vbar_RZ_dat_grid, vbar_pZ_dat_grid]),\
+            vbar_R1_dat_grid, vbar_p1_dat_grid, vbar_T1_dat_grid, vbar_Z1_dat_grid,
+            vbar_RR_dat_grid, vbar_pp_dat_grid, vbar_TT_dat_grid, vbar_ZZ_dat_grid,
+            vbar_Rp_dat_grid, vbar_RT_dat_grid, vbar_RZ_dat_grid, vbar_pZ_dat_grid, vbar_TZ_dat_grid]),\
             np.array([counts_pois_grid,
-            vbar_R1_std_grid,vbar_p1_std_grid,vbar_Z1_std_grid,
-            vbar_RR_std_grid,vbar_pp_std_grid,vbar_ZZ_std_grid,
-            vbar_Rp_std_grid, vbar_RZ_std_grid, vbar_pZ_std_grid])
+            vbar_R1_std_grid, vbar_p1_std_grid, vbar_T1_std_grid, vbar_Z1_std_grid,
+            vbar_RR_std_grid, vbar_pp_std_grid, vbar_T1_std_grid, vbar_ZZ_std_grid,
+            vbar_Rp_std_grid, vbar_RT_std_grid, vbar_RZ_std_grid, vbar_pZ_std_grid, vbar_TZ_std_grid])
 
 
 def binning_positions_only(Rg_vec, phig_vec, Zg_vec, R_edges, phi_edges, Z_edges):
@@ -659,24 +589,32 @@ class oscar_gaia_data:
             self.nu_dat_grid = cache_dataframe['nu_dat_grid']
             self.vbar_R1_dat_grid = cache_dataframe['vbar_R1_dat_grid']
             self.vbar_p1_dat_grid = cache_dataframe['vbar_p1_dat_grid']
+            self.vbar_T1_dat_grid = cache_dataframe['vbar_T1_dat_grid']
             self.vbar_Z1_dat_grid = cache_dataframe['vbar_Z1_dat_grid']
             self.vbar_RR_dat_grid = cache_dataframe['vbar_RR_dat_grid']
             self.vbar_pp_dat_grid = cache_dataframe['vbar_pp_dat_grid']
+            self.vbar_TT_dat_grid = cache_dataframe['vbar_TT_dat_grid']
             self.vbar_ZZ_dat_grid = cache_dataframe['vbar_ZZ_dat_grid']
             self.vbar_Rp_dat_grid = cache_dataframe['vbar_Rp_dat_grid']
+            self.vbar_RT_dat_grid = cache_dataframe['vbar_RT_dat_grid']
             self.vbar_RZ_dat_grid = cache_dataframe['vbar_RZ_dat_grid']
             self.vbar_pZ_dat_grid = cache_dataframe['vbar_pZ_dat_grid']
+            self.vbar_TZ_dat_grid = cache_dataframe['vbar_TZ_dat_grid']
             self.counts_std_grid = cache_dataframe['counts_std_grid']
             self.nu_std_grid = cache_dataframe['nu_std_grid']
             self.vbar_R1_std_grid = cache_dataframe['vbar_R1_std_grid']
             self.vbar_p1_std_grid = cache_dataframe['vbar_p1_std_grid']
+            self.vbar_T1_std_grid = cache_dataframe['vbar_T1_std_grid']
             self.vbar_Z1_std_grid = cache_dataframe['vbar_Z1_std_grid']
             self.vbar_RR_std_grid = cache_dataframe['vbar_RR_std_grid']
             self.vbar_pp_std_grid = cache_dataframe['vbar_pp_std_grid']
+            self.vbar_TT_std_grid = cache_dataframe['vbar_TT_std_grid']
             self.vbar_ZZ_std_grid = cache_dataframe['vbar_ZZ_std_grid']
             self.vbar_Rp_std_grid = cache_dataframe['vbar_Rp_std_grid']
+            self.vbar_RT_std_grid = cache_dataframe['vbar_RT_std_grid']
             self.vbar_RZ_std_grid = cache_dataframe['vbar_RZ_std_grid']
             self.vbar_pZ_std_grid = cache_dataframe['vbar_pZ_std_grid']
+            self.vbar_TZ_std_grid = cache_dataframe['vbar_TZ_std_grid']
 
         else:
             print('No previous sampling found, running from scratch')
@@ -727,7 +665,7 @@ class oscar_gaia_data:
             if self.positions_only:
                 grid_shape = (1, len(self.R_edges)-1, len(self.phi_edges)-1, len(self.Z_edges)-1)
             else:
-                grid_shape = (10, len(self.R_edges)-1, len(self.phi_edges)-1, len(self.Z_edges)-1)
+                grid_shape = (14, len(self.R_edges)-1, len(self.phi_edges)-1, len(self.Z_edges)-1)
             subvector_length = (len(self.R_edges)-1)*(len(self.phi_edges)-1)*(len(self.Z_edges)-1)
 
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
@@ -754,7 +692,7 @@ class oscar_gaia_data:
             if positions_only:
                 counts_repeated = np.hstack([counts_subvectors]*1)
             else:
-                counts_repeated = np.hstack([counts_subvectors]*10)
+                counts_repeated = np.hstack([counts_subvectors]*14)
 
             self.data_var_avg_from_samples = np.sum(counts_repeated * \
                 (np.nan_to_num(all_binned_std_vectors)**2),axis=0)/np.sum(counts_repeated,axis=0)
@@ -780,23 +718,39 @@ class oscar_gaia_data:
                 self.counts_grid = self.data_mean_grids[0]
                 self.counts_std_grid = self.data_std_total_grids[0]
 
-                self.vbar_R1_dat_grid = self.vbar_p1_dat_grid = self.vbar_Z1_dat_grid = \
-                self.vbar_RR_dat_grid = self.vbar_pp_dat_grid = self.vbar_ZZ_dat_grid = \
-                self.vbar_Rp_dat_grid = self.vbar_RZ_dat_grid = self.vbar_pZ_dat_grid = \
-                self.vbar_R1_std_grid = self.vbar_p1_std_grid = self.vbar_Z1_std_grid = \
-                self.vbar_RR_std_grid = self.vbar_pp_std_grid = self.vbar_ZZ_std_grid = \
-                self.vbar_Rp_std_grid = self.vbar_RZ_std_grid = self.vbar_pZ_std_grid = 0.*self.counts_grid
+                self.vbar_R1_dat_grid = self.vbar_p1_dat_grid = \
+                self.vbar_T1_dat_grid = self.vbar_Z1_dat_grid = \
+                self.vbar_RR_dat_grid = self.vbar_pp_dat_grid = \
+                self.vbar_TT_dat_grid = self.vbar_ZZ_dat_grid = \
+                self.vbar_Rp_dat_grid = self.vbar_RT_dat_grid = \
+                self.vbar_RZ_dat_grid = self.vbar_pZ_dat_grid = \
+                self.vbar_TZ_dat_grid = \
+                self.vbar_R1_std_grid = self.vbar_p1_std_grid = \
+                self.vbar_T1_std_grid = self.vbar_Z1_std_grid = \
+                self.vbar_RR_std_grid = self.vbar_pp_std_grid = \
+                self.vbar_TT_std_grid = self.vbar_ZZ_std_grid = \
+                self.vbar_Rp_std_grid = self.vbar_RT_std_grid = \
+                self.vbar_RZ_std_grid = self.vbar_pZ_std_grid = \
+                self.vbar_TZ_std_grid = 0.*self.counts_grid
 
             else:
                 self.counts_grid,\
-                self.vbar_R1_dat_grid, self.vbar_p1_dat_grid, self.vbar_Z1_dat_grid,\
-                self.vbar_RR_dat_grid, self.vbar_pp_dat_grid, self.vbar_ZZ_dat_grid,\
-                self.vbar_Rp_dat_grid, self.vbar_RZ_dat_grid, self.vbar_pZ_dat_grid = self.data_mean_grids
+                self.vbar_R1_dat_grid, self.vbar_p1_dat_grid,\
+                self.vbar_T1_dat_grid, self.vbar_Z1_dat_grid,\
+                self.vbar_RR_dat_grid, self.vbar_pp_dat_grid,\
+                self.vbar_TT_dat_grid, self.vbar_ZZ_dat_grid,\
+                self.vbar_Rp_dat_grid, self.vbar_RT_dat_grid,\
+                self.vbar_RZ_dat_grid, self.vbar_pZ_dat_grid,\
+                self.vbar_TZ_dat_grid = self.data_mean_grids
 
                 self.counts_std_grid,\
-                self.vbar_R1_std_grid, self.vbar_p1_std_grid, self.vbar_Z1_std_grid,\
-                self.vbar_RR_std_grid, self.vbar_pp_std_grid, self.vbar_ZZ_std_grid,\
-                self.vbar_Rp_std_grid, self.vbar_RZ_std_grid, self.vbar_pZ_std_grid = self.data_std_total_grids
+                self.vbar_R1_std_grid, self.vbar_p1_std_grid,\
+                self.vbar_T1_std_grid, self.vbar_Z1_std_grid,\
+                self.vbar_RR_std_grid, self.vbar_pp_std_grid,\
+                self.vbar_TT_std_grid, self.vbar_ZZ_std_grid,\
+                self.vbar_Rp_std_grid, self.vbar_RT_std_grid,\
+                self.vbar_RZ_std_grid, self.vbar_pZ_std_grid,\
+                self.vbar_TZ_std_grid = self.data_std_total_grids
 
             # Calculate tracer density
             self.nu_dat_grid = self.counts_grid/self.bin_vol_grid
@@ -828,24 +782,32 @@ class oscar_gaia_data:
                             'nu_dat_grid' : self.nu_dat_grid,
                             'vbar_R1_dat_grid' : self.vbar_R1_dat_grid,
                             'vbar_p1_dat_grid' : self.vbar_p1_dat_grid,
+                            'vbar_T1_dat_grid' : self.vbar_T1_dat_grid,
                             'vbar_Z1_dat_grid' : self.vbar_Z1_dat_grid,
                             'vbar_RR_dat_grid' : self.vbar_RR_dat_grid,
                             'vbar_pp_dat_grid' : self.vbar_pp_dat_grid,
+                            'vbar_TT_dat_grid' : self.vbar_TT_dat_grid,
                             'vbar_ZZ_dat_grid' : self.vbar_ZZ_dat_grid,
                             'vbar_Rp_dat_grid' : self.vbar_Rp_dat_grid,
+                            'vbar_RT_dat_grid' : self.vbar_RT_dat_grid,
                             'vbar_RZ_dat_grid' : self.vbar_RZ_dat_grid,
                             'vbar_pZ_dat_grid' : self.vbar_pZ_dat_grid,
+                            'vbar_TZ_dat_grid' : self.vbar_TZ_dat_grid,
                             'counts_std_grid' : self.counts_std_grid,
                             'nu_std_grid' : self.nu_std_grid,
                             'vbar_R1_std_grid' : self.vbar_R1_std_grid,
                             'vbar_p1_std_grid' : self.vbar_p1_std_grid,
+                            'vbar_T1_std_grid' : self.vbar_T1_std_grid,
                             'vbar_Z1_std_grid' : self.vbar_Z1_std_grid,
                             'vbar_RR_std_grid' : self.vbar_RR_std_grid,
                             'vbar_pp_std_grid' : self.vbar_pp_std_grid,
+                            'vbar_TT_std_grid' : self.vbar_TT_std_grid,
                             'vbar_ZZ_std_grid' : self.vbar_ZZ_std_grid,
                             'vbar_Rp_std_grid' : self.vbar_Rp_std_grid,
+                            'vbar_RT_std_grid' : self.vbar_RT_std_grid,
                             'vbar_RZ_std_grid' : self.vbar_RZ_std_grid,
                             'vbar_pZ_std_grid' : self.vbar_pZ_std_grid,
+                            'vbar_TZ_std_grid' : self.vbar_TZ_std_grid,
                             }
 
             cache_dataframe = pd.Series(dictionary)
