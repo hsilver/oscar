@@ -272,6 +272,21 @@ def binning(Rg_vec, phig_vec, Zg_vec, vRg_vec, vTg_vec, vZg_vec, R_edges, phi_ed
     vphig_vec, star_V_gccyl[1]
     vZg_vec, star_V_gccyl[2]
 
+    0 counts_grid,
+    1 vbar_R1_dat_grid,
+    2 vbar_p1_dat_grid,
+    3 vbar_T1_dat_grid,
+    4 vbar_Z1_dat_grid,
+    5 vbar_RR_dat_grid,
+    6 vbar_pp_dat_grid,
+    7 vbar_TT_dat_grid,
+    8 vbar_ZZ_dat_grid,
+    9 vbar_Rp_dat_grid,
+    10 vbar_RT_dat_grid,
+    11 vbar_RZ_dat_grid,
+    12 vbar_pZ_dat_grid,
+    13 vbar_TZ_dat_grid])
+
     std refers to the standard deviation of the mean, hence the extra 1/sqrt(N)
     """
     #vphig_vec = vTg_vec/(Rg_vec * 3.086E1) #picorad/s
@@ -369,7 +384,20 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
                                                 vRg_vec, vTg_vec, vZg_vec,
                                                 R_edges, phi_edges, Z_edges)
 
-    return binned_data_vector.flatten(), binned_std_vector.flatten()
+        # Extra Quantities
+        vertex_deviation_dat_grid = vertex_deviation(binned_data_vector[0], #R1
+                                                    binned_data_vector[3], #T1
+                                                    binned_data_vector[5], #RR
+                                                    binned_data_vector[7], #TT
+                                                    binned_data_vector[10])
+
+    return binned_data_vector.flatten(), binned_std_vector.flatten(), \
+            vertex_deviation_dat_grid.flatten()
+
+def vertex_deviation(vbar_R1_dat_grid, vbar_T1_dat_grid, vbar_RR_dat_grid,
+                    vbar_TT_dat_grid, vbar_RT_dat_grid):
+    return -2*(180/np.pi)*(vbar_RT_dat_grid - vbar_R1_dat_grid*vbar_T1_dat_grid)\
+        /(vbar_RR_dat_grid - vbar_R1_dat_grid**2 - vbar_TT_dat_grid + vbar_T1_dat_grid**2)
 
 ##########################################################################
 
@@ -616,6 +644,15 @@ class oscar_gaia_data:
             self.vbar_pZ_std_grid = cache_dataframe['vbar_pZ_std_grid']
             self.vbar_TZ_std_grid = cache_dataframe['vbar_TZ_std_grid']
 
+            self.median_vertex_dev_vector = cache_dataframe['median_vertex_dev_vector']
+            self.mean_vertex_dev_vector = cache_dataframe['mean_vertex_dev_vector']
+            self.vertex_dev_3sig_lower = cache_dataframe['vertex_dev_3sig_lower']
+            self.vertex_dev_2sig_lower = cache_dataframe['vertex_dev_2sig_lower']
+            self.vertex_dev_1sig_lower = cache_dataframe['vertex_dev_1sig_lower']
+            self.vertex_dev_1sig_upper = cache_dataframe['vertex_dev_1sig_upper']
+            self.vertex_dev_2sig_upper = cache_dataframe['vertex_dev_2sig_upper']
+            self.vertex_dev_3sig_upper = cache_dataframe['vertex_dev_3sig_upper']
+
         else:
             print('No previous sampling found, running from scratch')
 
@@ -623,10 +660,12 @@ class oscar_gaia_data:
                 #Linear Sample Transform Bin
                 all_binned_data_vectors = []
                 all_binned_std_vectors = []
+                all_vertex_dev_vectors = []
                 start = time.time()
                 for jj in range(N_samplings):
                     print('Sample ', jj+1, ' of ', N_samplings)
-                    binned_data_vector, binned_std_vector = sample_transform_bin(
+                    binned_data_vector, binned_std_vector,\
+                    vertex_deviation_vector = sample_transform_bin(
                                         astrometric_means, astrometric_covariances,
                                         cholesky_astrometric_covariances,
                                         self.solar_pomo_means, self.solar_pomo_covariances,
@@ -635,9 +674,11 @@ class oscar_gaia_data:
                                         positions_only = self.positions_only)
                     all_binned_data_vectors.append(binned_data_vector)
                     all_binned_std_vectors.append(binned_std_vector)
+                    all_vertex_dev_vectors.append(vertex_deviation_vector)
 
                 all_binned_data_vectors = np.array(all_binned_data_vectors)
                 all_binned_std_vectors = np.array(all_binned_std_vectors)
+                all_vertex_dev_vectors = np.array(all_vertex_dev_vectors)
                 print('\nLinear Sampling, Transforming, Binning takes ', time.time()-start, ' s')
                 print('Time per sample: ', (time.time()-start)/N_samplings, ' s\n')
 
@@ -657,6 +698,7 @@ class oscar_gaia_data:
                 output = [p.get() for p in results]
                 all_binned_data_vectors = np.array([output[ii][0] for ii in range(N_samplings)])
                 all_binned_std_vectors = np.array([output[ii][1] for ii in range(N_samplings)])
+                all_vertex_dev_vectors = np.array([output[ii][1] for ii in range(N_samplings)])
                 end = time.time()
                 print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
                 print('Wall time per sample: ', (end-start)/N_samplings)
@@ -756,6 +798,18 @@ class oscar_gaia_data:
             self.nu_dat_grid = self.counts_grid/self.bin_vol_grid
             self.nu_std_grid = self.counts_std_grid/self.bin_vol_grid
 
+            # Process Vertex Deviation
+            all_vertex_dev_vectors = np.ma.masked_where(np.isnan(all_vertex_dev_vectors), all_vertex_dev_vectors)
+
+            self.median_vertex_dev_vector = np.median(all_vertex_dev_vectors, axis=0).reshape(grid_shape[1:])
+            self.mean_vertex_dev_vector = np.mean(all_vertex_dev_vectors, axis=0).reshape(grid_shape[1:])
+
+            self.vertex_dev_3sig_lower = np.percentile(all_vertex_dev_vectors, 100*0.0015, axis=0).reshape(grid_shape[1:])
+            self.vertex_dev_2sig_lower = np.percentile(all_vertex_dev_vectors, 100*0.0225, axis=0).reshape(grid_shape[1:])
+            self.vertex_dev_1sig_lower = np.percentile(all_vertex_dev_vectors, 100*0.158, axis=0).reshape(grid_shape[1:])
+            self.vertex_dev_1sig_upper = np.percentile(all_vertex_dev_vectors, 100*0.8415, axis=0).reshape(grid_shape[1:])
+            self.vertex_dev_2sig_upper = np.percentile(all_vertex_dev_vectors, 100*0.9775, axis=0).reshape(grid_shape[1:])
+            self.vertex_dev_3sig_upper = np.percentile(all_vertex_dev_vectors, 100*0.9985, axis=0).reshape(grid_shape[1:])
 
             # Build dictionary then save to dataframe
             dictionary = {'data_mean' : self.data_mean,
@@ -808,6 +862,14 @@ class oscar_gaia_data:
                             'vbar_RZ_std_grid' : self.vbar_RZ_std_grid,
                             'vbar_pZ_std_grid' : self.vbar_pZ_std_grid,
                             'vbar_TZ_std_grid' : self.vbar_TZ_std_grid,
+                            'median_vertex_dev_vector' : self.median_vertex_dev_vector,
+                            'mean_vertex_dev_vector' : self.mean_vertex_dev_vector,
+                            'vertex_dev_3sig_lower' : self.vertex_dev_3sig_lower ,
+                            'vertex_dev_2sig_lower' : self.vertex_dev_2sig_lower ,
+                            'vertex_dev_1sig_lower' : self.vertex_dev_1sig_lower ,
+                            'vertex_dev_1sig_upper' : self.vertex_dev_1sig_upper,
+                            'vertex_dev_2sig_upper' : self.vertex_dev_2sig_upper,
+                            'vertex_dev_3sig_upper' : self.vertex_dev_3sig_upper
                             }
 
             cache_dataframe = pd.Series(dictionary)
