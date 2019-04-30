@@ -437,7 +437,8 @@ class oscar_gaia_data:
                         N_samplings = 100,
                         N_cores = 1,
                         calculate_covariance = True,
-                        positions_only = False
+                        positions_only = False,
+                        velocities_to_zero = False
                         ):
         self.data_root = data_root
         self.data_file_name = data_file_name
@@ -459,6 +460,7 @@ class oscar_gaia_data:
         self.N_cores = N_cores
         self.calculate_covariance = calculate_covariance
         self.positions_only = positions_only
+        self.velocities_to_zero = velocities_to_zero
 
         # Set Constants and Parameters
         deg_to_rad = np.pi/180
@@ -489,6 +491,13 @@ class oscar_gaia_data:
             astrometric_means = np.array([datab['ra'].values * deg_to_rad, #rad
                                     datab['dec'].values * deg_to_rad, #rad
                                     datab['parallax'].values]).T #mas
+        elif self.velocities_to_zero:
+            astrometric_means = np.array([datab['ra'].values * deg_to_rad, #rad
+                                    datab['dec'].values * deg_to_rad, #rad
+                                    datab['parallax'].values, #mas
+                                    0. * datab['pmra'].values,
+                                    0. * datab['pmdec'].values,
+                                    0. * datab['radial_velocity'].values]).T #km/s    
         else:
             astrometric_means = np.array([datab['ra'].values * deg_to_rad, #rad
                                     datab['dec'].values * deg_to_rad, #rad
