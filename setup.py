@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='oscarbin',
-      version='0.11',
+      version='0.12',
       description='Sampling, transforming, and binning astrometric data ',
       url='https://github.com/hsilver/oscar',
       author='Hamish Silverwood',

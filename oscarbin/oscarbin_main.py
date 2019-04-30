@@ -497,7 +497,7 @@ class oscar_gaia_data:
                                     datab['parallax'].values, #mas
                                     0. * datab['pmra'].values,
                                     0. * datab['pmdec'].values,
-                                    0. * datab['radial_velocity'].values]).T #km/s    
+                                    0. * datab['radial_velocity'].values]).T #km/s
         else:
             astrometric_means = np.array([datab['ra'].values * deg_to_rad, #rad
                                     datab['dec'].values * deg_to_rad, #rad
@@ -604,6 +604,12 @@ class oscar_gaia_data:
 
         if self.positions_only:
             cache_file_name = 'oscar_cache_positions_only_' \
+                + hashlib.md5(np.concatenate([self.R_edges,self.phi_edges,self.Z_edges])).hexdigest()\
+                + hashlib.md5(np.concatenate([self.solar_pomo_means, self.solar_pomo_covariances.flatten()])).hexdigest()\
+                + '_' + str(self.N_samplings)\
+                + data_file_name.split('.')[0] + '.dat'
+        elif self.velocities_to_zero:
+            cache_file_name = 'oscar_cache_velocities_to_zero_' \
                 + hashlib.md5(np.concatenate([self.R_edges,self.phi_edges,self.Z_edges])).hexdigest()\
                 + hashlib.md5(np.concatenate([self.solar_pomo_means, self.solar_pomo_covariances.flatten()])).hexdigest()\
                 + '_' + str(self.N_samplings)\
