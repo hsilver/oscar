@@ -385,11 +385,29 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
                                                 R_edges, phi_edges, Z_edges)
 
         # Extra Quantities
-        vertex_deviation_dat_grid = vertex_deviation(binned_data_vector[0], #R1
+        vertex_deviation_dat_grid = vertex_deviation(binned_data_vector[1], #R1
                                                     binned_data_vector[3], #T1
                                                     binned_data_vector[5], #RR
                                                     binned_data_vector[7], #TT
-                                                    binned_data_vector[10])
+                                                    binned_data_vector[10]) #RT
+
+        # vbar_R1_dat_grid, vbar_T1_dat_grid, vbar_RR_dat_grid,
+        #                     vbar_TT_dat_grid, vbar_RT_dat_grid):
+        # 0 counts_grid,
+        # 1 vbar_R1_dat_grid,
+        # 2 vbar_p1_dat_grid,
+        # 3 vbar_T1_dat_grid,
+        # 4 vbar_Z1_dat_grid,
+        # 5 vbar_RR_dat_grid,
+        # 6 vbar_pp_dat_grid,
+        # 7 vbar_TT_dat_grid,
+        # 8 vbar_ZZ_dat_grid,
+        # 9 vbar_Rp_dat_grid,
+        # 10 vbar_RT_dat_grid,
+        # 11 vbar_RZ_dat_grid,
+        # 12 vbar_pZ_dat_grid,
+        # 13 vbar_TZ_dat_grid])
+
 
     return binned_data_vector.flatten(), binned_std_vector.flatten(), \
             vertex_deviation_dat_grid.flatten()
@@ -698,7 +716,7 @@ class oscar_gaia_data:
                 output = [p.get() for p in results]
                 all_binned_data_vectors = np.array([output[ii][0] for ii in range(N_samplings)])
                 all_binned_std_vectors = np.array([output[ii][1] for ii in range(N_samplings)])
-                all_vertex_dev_vectors = np.array([output[ii][1] for ii in range(N_samplings)])
+                all_vertex_dev_vectors = np.array([output[ii][2] for ii in range(N_samplings)])
                 end = time.time()
                 print('Parallel Sampling, Transforming, Binning takes ', end-start, ' s')
                 print('Wall time per sample: ', (end-start)/N_samplings)
