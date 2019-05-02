@@ -436,6 +436,8 @@ class oscar_gaia_data:
                         input_Z_edges = None,
                         N_samplings = 100,
                         N_cores = 1,
+                        solar_pomo_means = np.array([8200.,0.,20.8, 10.,248.,7.]),
+                        solar_pomo_stds = np.array([100., 0., 0.3, 1., 3., 0.5]),
                         calculate_covariance = True,
                         positions_only = False,
                         velocities_to_zero = False
@@ -468,8 +470,8 @@ class oscar_gaia_data:
         maspyr_to_radps = np.pi/(6.48E8 * 31557600)
 
         # Solar Position and Motion model
-        self.solar_pomo_means = np.array([8200.,0.,20.8, 10.,248.,7.])
-        self.solar_pomo_stds = np.array([100., 0., 0.3, 1., 3., 0.5])
+        self.solar_pomo_means = solar_pomo_means
+        self.solar_pomo_stds = solar_pomo_stds
         self.solar_pomo_covariances = np.identity(6) * self.solar_pomo_stds**2
         """
         Bland Hawthorn et al 2016 review
