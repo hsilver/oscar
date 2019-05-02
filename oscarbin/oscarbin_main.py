@@ -414,8 +414,17 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
 
 def vertex_deviation(vbar_R1_dat_grid, vbar_T1_dat_grid, vbar_RR_dat_grid,
                     vbar_TT_dat_grid, vbar_RT_dat_grid):
-    return -2*(180/np.pi)*(vbar_RT_dat_grid - vbar_R1_dat_grid*vbar_T1_dat_grid)\
-        /(vbar_RR_dat_grid - vbar_R1_dat_grid**2 - vbar_TT_dat_grid + vbar_T1_dat_grid**2)
+
+    numerator = -2*(180/np.pi)*(np.ma.masked_invalid(vbar_RT_dat_grid)\
+                    - np.ma.masked_invalid(vbar_R1_dat_grid)\
+                      *np.ma.masked_invalid(vbar_T1_dat_grid))
+
+    denominator = (np.ma.masked_invalid(vbar_RR_dat_grid)\
+                    - np.ma.masked_invalid(vbar_R1_dat_grid)**2\
+                    - np.ma.masked_invalid(vbar_TT_dat_grid)\
+                    + np.ma.masked_invalid(vbar_T1_dat_grid)**2)
+
+    return numerator/denominator
 
 ##########################################################################
 
