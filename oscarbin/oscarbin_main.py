@@ -9,6 +9,7 @@ import multiprocessing as mp
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from physt import h2 as physt_h2
+from physt import h3 as physt_h3
 import hashlib
 import sklearn
 import sklearn.covariance as sklcov
@@ -350,11 +351,12 @@ def sample_transform_bin(astrometric_means, astrometric_covariances,
     """
     #https://stackoverflow.com/questions/14920272/generate-a-data-set-consisting-of-n-100-2-dimensional-samples
     """
-    rand.seed(int(seed + int(time.time())%10000+1))
-    # stars_sample = np.array([rand.multivariate_normal(astrometric_means[ii],
-    #                     astrometric_covariances[ii]) for ii in range(Nstars)])
-    #Cholesky Decomposition Method
     Nstars = len(astrometric_means)
+    rand.seed(int(seed + int(time.time())%10000+1))
+    #stars_sample_test = np.array([rand.multivariate_normal(astrometric_means[ii],
+    #                    astrometric_covariances[ii]) for ii in range(Nstars)])
+
+    #Cholesky Decomposition Method
     if positions_only:
         uncorrelated_sample = np.random.standard_normal((Nstars,3))
         stars_sample = np.array([np.dot(cholesky_astrometric_covariances[ii],\
@@ -425,6 +427,26 @@ def vertex_deviation(vbar_R1_dat_grid, vbar_T1_dat_grid, vbar_RR_dat_grid,
                     + np.ma.masked_invalid(vbar_T1_dat_grid)**2)
 
     return numerator/denominator
+
+def plot_sample_hist(all_binned_data_vectors, grid_shape, subvector_length,
+                        number_of_samples = 10):
+    random_indices = np.random.randint(0,subvector_length,number_of_samples)
+    hist_labels=['counts_grid','vbar_R1_dat','vbar_p1_dat','vbar_T1_dat',
+                'vbar_Z1_dat','vbar_RR_dat','vbar_pp_dat','vbar_TT_dat',
+                'vbar_ZZ_dat','vbar_Rp_dat','vbar_RT_dat','vbar_RZ_dat',
+                'vbar_pZ_dat','vbar_TZ_dat']
+
+    num_bins = max(10,int(all_binned_data_vectors.shape[0]/10))
+    for ii in range(0,14):
+        fig, axes = plt.subplots(ncols=1,nrows=number_of_samples,
+                                    figsize=(5,4*number_of_samples))
+
+        for jj in range(0,number_of_samples):
+            axes[jj].hist(all_binned_data_vectors[:,ii*subvector_length+random_indices[jj]],
+                            bins=num_bins)
+            axes[jj].set_xlabel(hist_labels[ii])
+
+        fig.savefig('data_hist_' + hist_labels[ii] + '.png',bbox_inches='tight')
 
 ##########################################################################
 
@@ -586,7 +608,7 @@ class oscar_gaia_data:
             phig_vec_means = galactocentric_means[1]
             Zg_vec_means = galactocentric_means[2]
 
-            physt_hist = physt_h3(Rg_vec_means, phig_vec_means, Zg_vec_means, "quantile",
+            physt_hist = physt_h3([Rg_vec_means, phig_vec_means, Zg_vec_means], "quantile",
                         (self.num_R_bins+2,self.num_phi_bins+2, self.num_Z_bins+2))
             self.R_edges = physt_hist.numpy_bins[0][1:-1]
             self.phi_edges = physt_hist.numpy_bins[1][1:-1]
@@ -754,6 +776,9 @@ class oscar_gaia_data:
                 grid_shape = (14, len(self.R_edges)-1, len(self.phi_edges)-1, len(self.Z_edges)-1)
             subvector_length = (len(self.R_edges)-1)*(len(self.phi_edges)-1)*(len(self.Z_edges)-1)
 
+            plot_sample_hist(all_binned_data_vectors, grid_shape, subvector_length,
+                                    number_of_samples = 10)
+
             self.data_mean = np.mean(all_binned_data_vectors, axis=0)
             self.data_median = np.median(all_binned_data_vectors, axis=0)
 
@@ -783,6 +808,13 @@ class oscar_gaia_data:
             self.data_var_avg_from_samples = np.sum(counts_repeated * \
                 (np.nan_to_num(all_binned_std_vectors)**2),axis=0)/np.sum(counts_repeated,axis=0)
             self.data_std_total = np.sqrt(self.data_var_from_cov + self.data_var_avg_from_samples)
+
+            #BODGE TEST CODE 5 JUNE 2019
+            #Standard dev on the means
+            self.data_std_total = np.sqrt(self.data_var_from_cov)
+            #Standard error on the means plue mean error from each sample
+            # self.data_std_total = np.sqrt(self.data_var_from_cov/N_samplings
+            #                                 + self.data_var_avg_from_samples)
 
             #Gaussianity test using D’Agostino and Pearson’s tests
             self.skewness_stat, self.skewness_pval = stats.skewtest(all_binned_data_vectors)
